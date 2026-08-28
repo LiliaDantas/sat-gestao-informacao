@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SAT — Gestão da Informação</title>
+<title>SAT Secgeral</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -362,27 +362,27 @@ var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 var SB_HEADERS = { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + SUPABASE_ANON_KEY };
 
 function sbList(table){
-  return fetch(SUPABASE_URL + "/rest/v1/" + table + "?select=*", { headers: SB_HEADERS })
-    .then(function(res){ if(!res.ok) throw new Error("Falha ao carregar " + table); return res.json(); });
+  return fetch(SUPABASE_URL + "/rest/v1/" + table + "?select=*", { headers: authHeaders() })
+    .then(function(res){ if(res.status===401){ sbLogout(); throw new Error("sessão expirada"); } if(!res.ok) throw new Error("Falha ao carregar " + table); return res.json(); });
 }
 function sbInsert(table, row){
   return fetch(SUPABASE_URL + "/rest/v1/" + table, {
     method: "POST",
-    headers: Object.assign({}, SB_HEADERS, { "Content-Type": "application/json", Prefer: "return=minimal" }),
+    headers: Object.assign({}, authHeaders(), { "Content-Type": "application/json", Prefer: "return=minimal" }),
     body: JSON.stringify(row)
-  }).then(function(res){ if(!res.ok) return res.text().then(function(t){ throw new Error(t); }); });
+  }).then(function(res){ if(res.status===401){ sbLogout(); } if(!res.ok) return res.text().then(function(t){ throw new Error(t); }); });
 }
 function sbUpdate(table, id, row){
   return fetch(SUPABASE_URL + "/rest/v1/" + table + "?id=eq." + encodeURIComponent(id), {
     method: "PATCH",
-    headers: Object.assign({}, SB_HEADERS, { "Content-Type": "application/json", Prefer: "return=minimal" }),
+    headers: Object.assign({}, authHeaders(), { "Content-Type": "application/json", Prefer: "return=minimal" }),
     body: JSON.stringify(row)
-  }).then(function(res){ if(!res.ok) return res.text().then(function(t){ throw new Error(t); }); });
+  }).then(function(res){ if(res.status===401){ sbLogout(); } if(!res.ok) return res.text().then(function(t){ throw new Error(t); }); });
 }
 function sbDelete(table, id){
   return fetch(SUPABASE_URL + "/rest/v1/" + table + "?id=eq." + encodeURIComponent(id), {
-    method: "DELETE", headers: SB_HEADERS
-  }).then(function(res){ if(!res.ok) return res.text().then(function(t){ throw new Error(t); }); });
+    method: "DELETE", headers: authHeaders()
+  }).then(function(res){ if(res.status===401){ sbLogout(); } if(!res.ok) return res.text().then(function(t){ throw new Error(t); }); });
 }
 function sbFail(msg){
   return function(err){ toast(msg + (err && err.message ? (": " + err.message) : ""), "err"); };
@@ -437,6 +437,41 @@ function rowToMarco(r){
 function marcoToRow(m){
   return { id:m.id, projeto_id:m.projetoId, descricao:m.descricao, data_prevista:m.dataPrevista||null,
     data_realizada:m.dataRealizada||null, status:m.status||"previsto", tipo:m.tipo||"marco" };
+}
+/* ---- autenticação (Supabase Auth) ---- */
+var SB_SESSION = null; // {access_token, email}
+function authHeaders(){
+  var token = SB_SESSION ? SB_SESSION.access_token : SUPABASE_ANON_KEY;
+  return { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + token };
+}
+function sbLogin(email, senha){
+  return fetch(SUPABASE_URL + "/auth/v1/token?grant_type=password", {
+    method: "POST",
+    headers: { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email, password: senha })
+  }).then(function(res){
+    return res.json().then(function(data){
+      if(!res.ok) throw new Error(data.error_description || data.msg || "E-mail ou senha inválidos.");
+      return data;
+    });
+  });
+}
+function sbLogout(){
+  SB_SESSION = null;
+  try{ sessionStorage.removeItem('sat_session'); }catch(e){}
+  DB = null;
+  paintLogin();
+}
+function saveSession(data){
+  SB_SESSION = { access_token: data.access_token, email: data.user && data.user.email };
+  try{ sessionStorage.setItem('sat_session', JSON.stringify(SB_SESSION)); }catch(e){}
+}
+function restoreSession(){
+  try{
+    var raw = sessionStorage.getItem('sat_session');
+    if(raw){ SB_SESSION = JSON.parse(raw); return true; }
+  }catch(e){}
+  return false;
 }
 function deriveMeta(projetos){
   var orgaos = {}, responsaveis = {}, status = {};
@@ -637,21 +672,62 @@ function init(){
   styleEl.textContent = CSS_TEXT;
   document.head.appendChild(styleEl);
 
+  wireEvents();
+  wireLoginForm();
+
+  if(restoreSession()){
+    startApp();
+  } else {
+    paintLogin();
+  }
+}
+function startApp(){
   DB = {projetos:[],briefings:[],atualizacoes:[],anexos:[],marcos:[],meta:{orgaos:[],responsaveis:[],status:[]}};
   normalizeDB();
-
   try{
     var savedUi = sessionStorage.getItem('sat_ui');
     if(savedUi){ Object.assign(UI, JSON.parse(savedUi)); sessionStorage.removeItem('sat_ui'); }
   }catch(e){}
-
-  wireEvents();
   paintLoading();
   carregarTudoDoSupabase();
 }
 function paintLoading(){
   var root = document.getElementById('root');
   if(root) root.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;width:100%;color:var(--ink-muted);font-size:14px">Carregando dados do Supabase…</div>';
+}
+function paintLogin(loginError){
+  var root = document.getElementById('root');
+  if(!root) return;
+  root.innerHTML =
+    '<div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background:var(--bg)">'+
+      '<form id="login-form" style="width:min(360px,90vw);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-l);padding:32px;box-shadow:var(--shadow)">'+
+        '<h1 style="font-size:20px;margin-bottom:4px">SAT</h1>'+
+        '<p class="muted small" style="margin-bottom:20px">Superintendência de Assessoramento Técnico — acesso restrito</p>'+
+        (loginError ? '<div class="banner" style="border-color:var(--critical);color:var(--critical-ink);background:var(--critical-soft);margin-bottom:14px">'+esc(loginError)+'</div>' : '')+
+        '<div class="field"><label>E-mail</label><input class="input" type="email" id="login-email" required autofocus></div>'+
+        '<div class="field"><label>Senha</label><input class="input" type="password" id="login-senha" required></div>'+
+        '<button class="btn btn-primary" type="submit" style="width:100%;justify-content:center;margin-top:6px" id="login-btn">Entrar</button>'+
+      '</form>'+
+    '</div>';
+  var email = document.getElementById('login-email');
+  if(email) email.focus();
+}
+function wireLoginForm(){
+  document.body.addEventListener('submit', function(e){
+    var form = e.target.closest('#login-form');
+    if(!form) return;
+    e.preventDefault();
+    var email = document.getElementById('login-email').value.trim();
+    var senha = document.getElementById('login-senha').value;
+    var btn = document.getElementById('login-btn');
+    btn.disabled = true; btn.textContent = 'Entrando…';
+    sbLogin(email, senha).then(function(data){
+      saveSession(data);
+      startApp();
+    }).catch(function(err){
+      paintLogin(err.message || 'Não foi possível entrar.');
+    });
+  });
 }
 function carregarTudoDoSupabase(){
   Promise.all([
@@ -728,7 +804,8 @@ function renderShell(){
   }).join('');
   var badge = dbOffline
     ? '<span class="rw-badge"><span class="dot warn"></span>sem conexão com o banco</span>'
-    : '<span class="rw-badge"><span class="dot ok"></span>sincronizado com o Supabase</span>';
+    : '<span class="rw-badge"><span class="dot ok"></span>'+esc(SB_SESSION?SB_SESSION.email:'')+'</span>';
+  badge += ' <button class="link-btn" data-action="logout" style="font-size:11.5px;opacity:.75;margin-top:4px;display:inline-block">Sair</button>';
   return (
     '<div class="sidebar">'+
       '<div class="brand"><div class="brand-row"><img class="brand-crest" src="data:image/png;base64,'+BRASAO_MG_B64+'" alt="Brasão de Minas Gerais" width="40" height="40">'+
@@ -1536,7 +1613,10 @@ function resolveOrgao(form){
 
 function handleAction(action, el, e){
   var id = el.dataset.id;
-  if(action==='nav'){
+  if(action==='logout'){
+    sbLogout();
+    return;
+  } else if(action==='nav'){
     UI.view = el.dataset.view;
     if(UI.view!=='projeto-detail') UI.selectedProjetoId = null;
     if(UI.view!=='briefing-detail') UI.selectedBriefingId = null;
