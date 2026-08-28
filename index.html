@@ -87,7 +87,7 @@ body{
   font-family:var(--font-body); font-size:14.5px; line-height:1.5;
   -webkit-font-smoothing:antialiased;
 }
-h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; margin:0; color:var(--accent); text-wrap:balance; }
+h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; margin:0; color:var(--sidebar-bg); text-wrap:balance; }
 p{ margin:0 0 .6em; }
 a{ color:var(--accent); }
 ::selection{ background:var(--accent-soft); }
@@ -275,6 +275,12 @@ td.strong{ color:var(--ink); font-weight:600; }
 /* ---------- calendar ---------- */
 .cal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
 .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.cal-card{ border:2px solid var(--sidebar-bg); padding:0; overflow:hidden; }
+.cal-card-head{ background:var(--sidebar-bg); color:var(--sidebar-ink); display:flex; align-items:center; justify-content:space-between; padding:14px 20px; margin-bottom:0; }
+.cal-card-head h2{ color:var(--sidebar-ink); }
+.cal-card-head .icon-btn{ color:var(--sidebar-ink); border-color:rgba(255,255,255,.35); }
+.cal-card-head .icon-btn:hover{ background:rgba(255,255,255,.12); }
+.cal-card-body{ padding:20px 22px; }
 .cal-dow{ font-size:11px; text-transform:uppercase; color:var(--ink-muted); text-align:center; padding-bottom:4px; letter-spacing:.04em; }
 .cal-cell{ min-height:76px; border:1px solid var(--border); border-radius:var(--radius-s); padding:6px; background:var(--surface); display:flex; flex-direction:column; gap:3px; }
 .cal-cell.pad{ background:transparent; border-color:transparent; }
@@ -488,7 +494,7 @@ var DB = null;
 var UI = { view:'home', selectedProjetoId:null, selectedBriefingId:null, projetoTab:'geral', modal:null,
            filtros:{ q:'', orgao:'', responsavel:'', status:'', encerrados:false },
            calMonth: (new Date()).getFullYear()+'-'+((new Date()).getMonth()+1),
-           despachoTab:'projetos', despachoOverrides:{}, despachoEditing:{},
+           despachoTab:'projetos', despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{},
            projetoExpandidoId:null, briefingExpandidoId:null, briefingFiltroQ:'', atualTipoAlvo:'projeto' };
 
 /* ---------------------------------------------------------------- utils */
@@ -612,9 +618,9 @@ function updateBriefing(id, patch){
   Object.assign(b, patch);
   sbUpdate('briefings', id, briefingToRow(b)).catch(sbFail('Não foi possível salvar as alterações do briefing'));
 }
-function addAtualizacao(alvoTipo, alvoId, texto, autor){
+function addAtualizacao(alvoTipo, alvoId, texto, autor, origem){
   var id = uid('at');
-  var a = {id:id, alvoTipo:alvoTipo||'projeto', projetoId:alvoId, texto:texto, autor:autor||null, data:nowIso(), origem:'manual'};
+  var a = {id:id, alvoTipo:alvoTipo||'projeto', projetoId:alvoId, texto:texto, autor:autor||null, data:nowIso(), origem:origem||'manual'};
   DB.atualizacoes.push(a);
   var alvo = (alvoTipo==='briefing') ? getBriefing(alvoId) : getProjeto(alvoId);
   if(alvo){
@@ -805,7 +811,7 @@ function renderShell(){
   var badge = dbOffline
     ? '<span class="rw-badge"><span class="dot warn"></span>sem conexão com o banco</span>'
     : '<span class="rw-badge"><span class="dot ok"></span>'+esc(SB_SESSION?SB_SESSION.email:'')+'</span>';
-  badge += ' <button class="link-btn" data-action="logout" style="font-size:11.5px;opacity:.75;margin-top:4px;display:inline-block">Sair</button>';
+  badge += ' <button class="link-btn" data-action="logout" style="font-size:11.5px;margin-top:4px;display:inline-block;color:var(--sidebar-ink);text-decoration:underline;opacity:.85">Sair</button>';
   return (
     '<div class="sidebar">'+
       '<div class="brand"><div class="brand-row"><img class="brand-crest" src="data:image/png;base64,'+BRASAO_MG_B64+'" alt="Brasão de Minas Gerais" width="40" height="40">'+
@@ -876,8 +882,7 @@ function renderHome(){
   var shortcutsHtml = HOME_SHORTCUTS.map(function(s){
     return '<button class="shortcut-card" data-action="nav" data-view="'+s.view+'">'+
       '<span class="shortcut-ic">'+s.ic+'</span>'+
-      '<span class="shortcut-title">'+esc(s.title)+'</span>'+
-      '<span class="shortcut-desc">'+esc(s.desc)+'</span></button>';
+      '<span class="shortcut-title">'+esc(s.title)+'</span></button>';
   }).join('');
 
   return (
@@ -974,7 +979,7 @@ function renderProjetos(){
     var expanded = UI.projetoExpandidoId === p.id;
     var row = '<tr class="clickable'+(expanded?' expanded':'')+'" data-action="projeto-expand-toggle" data-id="'+p.id+'">'+
       '<td class="checkbox-cell"><input type="checkbox" title="Enviar para Despacho" data-onchange="despacho-toggle" data-id="'+p.id+'"'+checked+'></td>'+
-      '<td class="strong">'+esc(p.nome)+(p.revisarCadastro?' <span class="flag-review" title="Migrado do Trello — revisar cadastro">⚑</span>':'')+'</td>'+
+      '<td class="strong">'+esc(p.nome)+(p.revisarCadastro?' <span class="flag-review" title="Cadastro migrado — revisar">⚑</span>':'')+'</td>'+
       '<td>'+esc(p.orgao||'—')+'</td>'+
       '<td>'+esc(p.responsavel||'—')+'</td>'+
       '<td>'+statusPill(p.status)+'</td>'+
@@ -1003,11 +1008,6 @@ function renderProjetos(){
 }
 
 /* ----------------------------------------------------------------- despacho */
-function despachoVal(p, field){
-  var ov = UI.despachoOverrides[p.id];
-  if(ov && ov[field]!==undefined) return ov[field];
-  return p[field]!=null ? p[field] : '';
-}
 function renderDespacho(){
   var tabsHtml = DESPACHO_TABS.map(function(t){
     var label = esc(t[1]);
@@ -1028,58 +1028,43 @@ function renderDespachoProjetos(){
   }
   var projs = ids.map(getProjeto).filter(Boolean)
     .sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
-  return '<div class="banner info" style="margin-bottom:16px">As edições de campos feitas aqui ficam só nesta visualização — elas não alteram o cadastro do projeto na base de dados.</div>'+
-    projs.map(renderDespachoCard).join('');
+  return projs.map(renderDespachoCard).join('');
 }
 function renderDespachoPautas(){
   return '<div class="card"><div class="section-title"><h2>Outras Pautas</h2>'+
     '<span class="desc">Assuntos livres para o despacho, sem vínculo com um projeto específico. Sincronizado com a equipe.</span></div>'+
     '<textarea class="textarea" style="min-height:280px" data-onchange="despacho-pauta" placeholder="Escreva aqui outros assuntos a tratar no despacho…">'+esc(DB.despachoPauta||'')+'</textarea></div>';
 }
-function despachoField(id, field, label, val, multiline){
-  var attrs = 'data-onchange="despacho-field" data-id="'+id+'" data-field="'+field+'"';
-  if(multiline) return '<div class="field" style="grid-column:1/-1"><label>'+esc(label)+'</label><textarea class="textarea" '+attrs+'>'+esc(val)+'</textarea></div>';
-  return '<div class="field"><label>'+esc(label)+'</label><input class="input" '+attrs+' value="'+esc(val)+'"></div>';
+function ultimaAtualizacaoDoProjeto(id){
+  var list = DB.atualizacoes.filter(function(a){ return (a.alvoTipo||'projeto')==='projeto' && a.projetoId===id; })
+    .sort(function(a,b){ return new Date(b.data)-new Date(a.data); });
+  return list[0] || null;
 }
 function renderDespachoCard(p){
-  var editing = !!UI.despachoEditing[p.id];
-  var overridden = !!UI.despachoOverrides[p.id];
-  var resumo = despachoVal(p,'resumo'), objetivo = despachoVal(p,'objetivo'),
-      autoridade = despachoVal(p,'autoridade'), processoSei = despachoVal(p,'processoSei'),
-      status = despachoVal(p,'status'), orgao = despachoVal(p,'orgao'), responsavel = despachoVal(p,'responsavel');
-  var fieldsHtml = editing ? (
-    '<div class="grid-2">'+
-      despachoField(p.id,'orgao','Órgão',orgao)+
-      despachoField(p.id,'responsavel','Responsável Técnico SAT',responsavel)+
-      despachoField(p.id,'status','Status',status)+
-      despachoField(p.id,'processoSei','Processo SEI',processoSei)+
-      despachoField(p.id,'autoridade','Autoridade solicitante',autoridade,true)+
-      despachoField(p.id,'resumo','Resumo do objeto',resumo,true)+
-      despachoField(p.id,'objetivo','Objetivo',objetivo,true)+
-    '</div>'
-  ) : (
-    '<div class="grid-2">'+
-      '<div><label>Resumo do objeto</label><p style="margin-top:6px">'+(resumo? mdLite(resumo):'<span class="muted">Não preenchido.</span>')+'</p></div>'+
-      '<div><label>Objetivo</label><p style="margin-top:6px">'+(objetivo? mdLite(objetivo):'<span class="muted">Não preenchido.</span>')+'</p></div>'+
-      '<div><label>Autoridade solicitante</label><p style="margin-top:6px">'+(autoridade?esc(autoridade):'<span class="muted">—</span>')+'</p></div>'+
-      '<div><label>Processo SEI</label><p style="margin-top:6px" class="mono">'+(processoSei?esc(processoSei):'<span class="muted">—</span>')+'</p></div>'+
-    '</div>'
-  );
+  var ultima = ultimaAtualizacaoDoProjeto(p.id);
+  var encAberto = !!UI.despachoEncAberto[p.id];
+  var ultimaHtml = ultima ?
+    '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
+      '<div class="tl-meta">'+fmtDateTime(ultima.data)+'</div>'+
+      '<div class="tl-text">'+mdLite(ultima.texto)+'</div></div></div>'
+    : '<div class="empty-state small">Nenhuma atualização registrada para este projeto.</div>';
+  var encFormHtml = encAberto ?
+    '<form data-form="despacho-encaminhamento" data-projeto="'+p.id+'" style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">'+
+      '<div class="field"><label>Encaminhamento</label><textarea class="textarea" name="texto" placeholder="Registre aqui uma nota sobre este projeto para o despacho…" required data-autofocus></textarea></div>'+
+      '<div class="field-row"><div class="field" style="max-width:260px"><label>Autor</label>'+autorSelect()+'</div>'+
+        '<div class="field" style="align-self:flex-end"><button class="btn btn-primary" type="submit">Registrar</button></div></div>'+
+    '</form>'
+    : '';
   return '<div class="card" style="margin-bottom:16px">'+
-    '<div class="flex gap12" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:6px">'+
-      '<div class="flex gap8" style="flex-wrap:wrap">'+statusPill(status)+
-        '<span class="muted small">'+esc(orgao||'—')+' · responsável técnico: '+esc(responsavel||'—')+'</span>'+
-        (overridden?'<span class="tag" title="Esta visualização tem edições locais não salvas na base">edição local</span>':'')+
-      '</div>'+
+    '<div class="flex gap12" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:10px">'+
+      '<h3 style="margin:0"><button class="link-btn" style="font:inherit;color:inherit" data-action="open-projeto" data-id="'+p.id+'">'+esc(p.nome)+'</button></h3>'+
       '<div class="flex gap8">'+
-        (overridden?'<button class="icon-btn" title="Reverter para os dados originais" data-action="despacho-revert" data-id="'+p.id+'">↺</button>':'')+
-        '<button class="icon-btn" title="'+(editing?'Concluir edição':'Editar')+'" data-action="despacho-edit-toggle" data-id="'+p.id+'">'+(editing?'✓':'✎')+'</button>'+
+        '<button class="btn btn-sm btn-ghost" data-action="despacho-enc-toggle" data-id="'+p.id+'">'+(encAberto?'– Encaminhamento':'+ Encaminhamento')+'</button>'+
         '<button class="icon-btn" title="Remover do despacho" data-action="despacho-remove" data-id="'+p.id+'">✕</button>'+
       '</div>'+
     '</div>'+
-    '<h3 style="margin-bottom:4px"><button class="link-btn" style="font:inherit;color:inherit" data-action="open-projeto" data-id="'+p.id+'">'+esc(p.nome)+'</button></h3>'+
-    (p.trelloLink? '<div class="small muted" style="margin-bottom:10px"><a href="'+esc(p.trelloLink)+'" target="_blank" rel="noopener">Ver card original no Trello ↗</a></div>' : '')+
-    fieldsHtml+
+    ultimaHtml+
+    encFormHtml+
   '</div>';
 }
 
@@ -1107,8 +1092,8 @@ function renderProjetoDetail(){
           '<button class="btn btn-sm" data-action="toggle-encerrado" data-id="'+p.id+'">'+(p.encerrado?'Reabrir':'Encerrar')+'</button>'+
         '</div>'+
       '</div>'+
-      (p.trelloLink? '<div class="small muted" style="margin-bottom:6px"><a href="'+esc(p.trelloLink)+'" target="_blank" rel="noopener">Ver card original no Trello ↗</a></div>' : '')+
-      (p.revisarCadastro ? '<div class="banner warn">⚑ Este projeto veio da migração do Trello com status ambíguo ou não identificado. Revise o cadastro.</div>' : '')+
+      
+      (p.revisarCadastro ? '<div class="banner warn">⚑ Este projeto foi migrado com status ambíguo ou não identificado. Revise o cadastro.</div>' : '')+
       '<div class="tabs">'+tabsHtml+'</div>'+
       body+
     '</div>'
@@ -1134,7 +1119,8 @@ function renderAtualizacoesTimeline(tipo, id){
   var items = list.length ? list.map(function(a){
     return '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
       '<div class="tl-meta"><span class="tl-author">'+esc(a.autor||'—')+'</span>·<span>'+fmtDateTime(a.data)+'</span>'+
-      (a.origem&&a.origem!=='manual'?'<span class="tl-origin">'+(a.origem==='comment'?'migrado · comentário':'migrado · descrição')+'</span>':'')+
+      (a.origem==='encaminhamento'?'<span class="tag" title="Registrado a partir do Despacho">encaminhamento</span>':
+        (a.origem&&a.origem!=='manual'?'<span class="tl-origin">'+(a.origem==='comment'?'migrado · comentário':'migrado · descrição')+'</span>':''))+
       '<span class="spacer"></span><button class="icon-btn" title="Remover" data-action="del-atualizacao" data-id="'+a.id+'">✕</button></div>'+
       '<div class="tl-text">'+mdLite(a.texto)+'</div></div></div>';
   }).join('') : '<div class="empty-state small">'+vazio+'</div>';
@@ -1282,8 +1268,8 @@ function renderUltimosRegistros(tipo, alvoId){
     var nome = tipo==='briefing' ? (alvo?alvo.tema:'(removido)') : (alvo?alvo.nome:'(projeto removido)');
     var acao = tipo==='briefing' ? 'open-briefing' : 'open-projeto';
     return '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
-      '<div class="tl-meta"><span class="tl-author">'+esc(a.autor||'—')+'</span>·<span>'+fmtDateTime(a.data)+'</span>'+
-      (alvoId?'':'·<button class="link-btn" data-action="'+acao+'" data-id="'+esc(alvo?alvo.id:'')+'">'+esc(nome)+'</button>')+'</div>'+
+      '<div class="tl-meta"><button class="link-btn" data-action="'+acao+'" data-id="'+esc(alvo?alvo.id:'')+'">'+esc(nome)+'</button>·<span>'+fmtDateTime(a.data)+'</span></div>'+
+      '<div class="tl-author tl-author-line">'+esc(a.autor||'—')+'</div>'+
       '<div class="tl-text">'+mdLite(a.texto)+'</div></div></div>';
   }).join('');
 }
@@ -1334,7 +1320,7 @@ function renderAtualizacoesView(){
   }
   var feed = renderUltimosRegistros(tipo, selectedId);
   return '<div class="card">'+
-    '<div class="section-title"><h2>Registrar atualização</h2><span class="desc">Equivalente a comentar o card no Trello — cada registro fica no histórico do item.</span></div>'+
+    '<div class="section-title"><h2>Registrar atualização</h2><span class="desc">Cada registro fica salvo no histórico do item.</span></div>'+
     toggleHtml+formHtml+'</div>'+
     '<div class="card"><div class="section-title"><h2>Últimos registros</h2></div><div class="timeline" id="ultimos-registros-wrap">'+
     feed+'</div></div>';
@@ -1373,13 +1359,13 @@ function renderCalendario(){
     : '<div class="empty-state small">Nenhuma entrega em atraso.</div>';
 
   return (
-    '<div class="card">'+
-      '<div class="cal-head"><button class="icon-btn" data-action="cal-prev">←</button>'+
+    '<div class="card cal-card">'+
+      '<div class="cal-card-head"><button class="icon-btn" data-action="cal-prev">←</button>'+
         '<h2>'+monthLabel(y,m)+'</h2>'+
         '<button class="icon-btn" data-action="cal-next">→</button></div>'+
-      '<div class="cal-grid">'+dow+cells+'</div>'+
+      '<div class="cal-card-body"><div class="cal-grid">'+dow+cells+'</div></div>'+
     '</div>'+
-    '<div class="card"><div class="section-title"><h2>Entregas em atraso</h2></div>'+atrasadosHtml+'</div>'
+    '<div class="card" style="margin-top:16px"><div class="section-title"><h2>Entregas em atraso</h2></div>'+atrasadosHtml+'</div>'
   );
 }
 
@@ -1424,15 +1410,11 @@ function renderRelatorio(){
       kpi(ativos.length,'Ativos','accent')+
       kpi(atrasados.length,'Entregas atrasadas', atrasados.length>0?'critical':'')+
     '</div>'+
-    '<div class="grid-2" style="margin-top:16px">'+
-      '<div class="card"><div class="section-title"><h2>Projetos por órgão</h2>'+
-        '<span class="desc"><button class="btn btn-sm" data-action="export-csv">Exportar CSV de projetos</button></span></div>'+
-        orgTable(orgaoRows,'Projetos','Nenhum projeto cadastrado.')+'</div>'+
-      '<div class="card"><div class="section-title"><h2>Entregas Atrasadas</h2><span class="desc">por órgão</span></div>'+
-        orgTable(atrasoRows,'Atrasadas','Nenhuma entrega em atraso.')+'</div>'+
-    '</div>'+
     '<div class="card" style="margin-top:16px"><div class="section-title"><h2>Cadastros migrados que precisam de revisão</h2>'+
-      '<span class="desc">status não identificado ou ambíguo no board original</span></div>'+revisarHtml+'</div>'
+      '<span class="desc">status não identificado ou ambíguo na importação original</span></div>'+revisarHtml+'</div>'+
+    '<div class="card" style="margin-top:16px"><div class="section-title"><h2>Projetos por órgão</h2>'+
+      '<span class="desc"><button class="btn btn-sm" data-action="export-csv">Exportar CSV de projetos</button></span></div>'+
+      orgTable(orgaoRows,'Projetos','Nenhum projeto cadastrado.')+'</div>'
   );
 }
 function exportProjetosCsv(){
@@ -1486,7 +1468,7 @@ function renderProjetoFormModal(data){
         '<div class="field"><label>Autoridade solicitante</label><input class="input" name="autoridade" value="'+esc(p.autoridade)+'"></div>'+
         '<div class="field"><label>Processo SEI <span class="opt">ex.: 1220.01.0002036/2025-51</span></label><input class="input mono" name="processoSei" value="'+esc(p.processoSei)+'"></div>'+
       '</div>'+
-      '<div class="field"><label>Link de referência no Trello <span class="opt">opcional</span></label><input class="input" name="trelloLink" value="'+esc(p.trelloLink||'')+'"></div>'+
+      '<div class="field"><label>Link de referência externa <span class="opt">opcional</span></label><input class="input" name="trelloLink" value="'+esc(p.trelloLink||'')+'"></div>'+
     '</div>'+
     '<div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>'+
       '<button type="submit" class="btn btn-primary">'+(mode==='edit'?'Salvar alterações':'Criar projeto')+'</button></div>'+
@@ -1679,19 +1661,17 @@ function handleAction(action, el, e){
     openModal('marco-form', {mode:'create'});
   } else if(action==='despacho-tab'){
     UI.despachoTab = el.dataset.tab; paint();
-  } else if(action==='despacho-edit-toggle'){
-    UI.despachoEditing[id] = !UI.despachoEditing[id]; paint();
+  } else if(action==='despacho-enc-toggle'){
+    UI.despachoEncAberto[id] = !UI.despachoEncAberto[id]; paint();
   } else if(action==='despacho-remove'){
     mutate(function(){
       toggleDespachoSelecionado(id, false);
-      delete UI.despachoOverrides[id]; delete UI.despachoEditing[id];
+      delete UI.despachoEncAberto[id];
     });
-  } else if(action==='despacho-revert'){
-    delete UI.despachoOverrides[id]; paint();
   } else if(action==='despacho-clear'){
     mutate(function(){
       DB.despachoSelecionados = [];
-      UI.despachoOverrides = {}; UI.despachoEditing = {};
+      UI.despachoEncAberto = {};
     });
   } else if(action==='export-csv'){
     var csv = exportProjetosCsv();
@@ -1736,14 +1716,8 @@ function handleChange(kind, el){
     var pid = el.dataset.id, wasChecked = el.checked;
     mutate(function(){
       toggleDespachoSelecionado(pid, wasChecked);
-      if(!wasChecked){ delete UI.despachoOverrides[pid]; delete UI.despachoEditing[pid]; }
+      if(!wasChecked){ delete UI.despachoEncAberto[pid]; }
     });
-  }
-  else if(kind==='despacho-field'){
-    var pid2 = el.dataset.id, field = el.dataset.field;
-    if(!UI.despachoOverrides[pid2]) UI.despachoOverrides[pid2] = {};
-    UI.despachoOverrides[pid2][field] = el.value;
-    paint();
   }
   else if(kind==='despacho-pauta'){
     mutate(function(){ setDespachoPauta(el.value); });
@@ -1779,6 +1753,17 @@ function handleFormSubmit(kind, form){
       if(encData && encTexto) addMarco(alvoId, encTexto, encData, 'previsto', 'encaminhamento');
     });
     if(isGlobal) toast('Atualização registrada'+(anexoLink?' com anexo':'')+(encData&&encTexto?' e encaminhamento no calendário':'')+'.', 'ok');
+  } else if(kind==='despacho-encaminhamento'){
+    var pidEnc = form.dataset.projeto;
+    var textoEnc = (fd.get('texto')||'').toString().trim();
+    if(!pidEnc || !textoEnc) return;
+    var autorEnc = resolveAutor(form);
+    if(autorEnc) setLastAutor(autorEnc);
+    mutate(function(){
+      addAtualizacao('projeto', pidEnc, textoEnc, autorEnc, 'encaminhamento');
+      UI.despachoEncAberto[pidEnc] = false;
+    });
+    toast('Encaminhamento registrado no histórico do projeto.', 'ok');
   } else if(kind==='novo-anexo'){
     var pid = form.dataset.projeto;
     var nome = (fd.get('nomeArquivo')||'').toString().trim();
