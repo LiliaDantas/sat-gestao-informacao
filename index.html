@@ -1674,7 +1674,7 @@ function wireEvents(){
     if(e.target.closest('[data-stop]')) { /* clicks inside modal card don't close it */ }
     var backdrop = e.target.closest('[data-action="backdrop-close"]');
     if(backdrop && e.target===backdrop){ closeModal(); return; }
-    if(e.target.closest('[data-onchange="despacho-toggle"]')) return; /* checkbox inside a clickable row */
+    if(e.target.closest('[data-onchange="despacho-toggle"]') || e.target.closest('[data-onchange="despacho-toggle-briefing"]')) return; /* checkbox inside a clickable row */
     var el = e.target.closest('[data-action]');
     if(!el) return;
     handleAction(el.dataset.action, el, e);
