@@ -2017,7 +2017,7 @@ function handleFormSubmit(kind, form){
       anexoLink: (fd.get('anexoLink')||'').toString().trim()
     };
     if(kind==='novo-briefing'){
-      mutate(function(){ var newId = addBriefing(dataB); UI.view='briefing-detail'; UI.selectedBriefingId=newId; });
+      mutate(function(){ addBriefing(dataB); UI.view='briefings'; });
       toast('Briefing/estudo criado.', 'ok');
     } else {
       var editIdB = form.dataset.id;
