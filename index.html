@@ -1479,12 +1479,23 @@ function renderCalendario(){
   }
   var dow = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(function(x){return '<div class="cal-dow">'+x+'</div>';}).join('');
 
-  var atrasados = DB.marcos.filter(isMarcoAtrasado).sort(function(a,b){return new Date(a.dataPrevista)-new Date(b.dataPrevista);});
-  var atrasadosHtml = atrasados.length ? atrasados.map(function(mk){ var p=getProjeto(mk.projetoId);
-    return '<div class="tl-item"><div class="tl-dot" style="background:var(--critical)"></div><div class="tl-body">'+
-      '<div class="tl-meta">'+fmtDate(mk.dataPrevista)+'</div><div class="tl-text"><strong>'+esc(mk.descricao)+'</strong> — '+
-      '<button class="link-btn" data-action="open-projeto" data-id="'+esc(p?p.id:'')+'">'+esc(p?p.nome:'')+'</button></div></div></div>'; }).join('')
-    : '<div class="empty-state small">Nenhuma entrega em atraso.</div>';
+  var atrasados = DB.marcos.filter(isMarcoAtrasado);
+  var porProjeto = {};
+  atrasados.forEach(function(mk){ (porProjeto[mk.projetoId]=porProjeto[mk.projetoId]||[]).push(mk); });
+  var projsAtrasados = Object.keys(porProjeto).map(getProjeto).filter(Boolean)
+    .sort(function(a,b){ return new Date(b.dataUltimaAtualizacao||0) - new Date(a.dataUltimaAtualizacao||0); });
+  var atrasadosHtml = projsAtrasados.length ? projsAtrasados.map(function(p){
+    var ultima = ultimaAtualizacaoDoProjeto(p.id);
+    var marcosDoProjeto = porProjeto[p.id].sort(function(a,b){ return new Date(a.dataPrevista)-new Date(b.dataPrevista); });
+    var listaMarcos = marcosDoProjeto.map(function(mk){ return esc(mk.descricao)+' (venceu '+fmtDate(mk.dataPrevista)+')'; }).join(' · ');
+    return '<div class="tl-item" style="margin-bottom:14px"><div class="tl-dot" style="background:var(--critical)"></div><div class="tl-body">'+
+      '<div class="tl-meta"><button class="link-btn" data-action="open-projeto" data-id="'+esc(p.id)+'">'+esc(p.nome)+'</button>'+
+      (ultima?'·<span>'+fmtDateTime(ultima.data)+'</span>':'')+'</div>'+
+      (ultima?'<div class="tl-author tl-author-line">'+esc(ultima.autor||'—')+'</div>':'')+
+      '<div class="tl-text">'+(ultima?mdLite(ultima.texto):'<span class="muted">Nenhuma atualização registrada para este projeto.</span>')+'</div>'+
+      '<div class="small muted" style="margin-top:6px">Entrega(s) atrasada(s): '+listaMarcos+'</div>'+
+    '</div></div>';
+  }).join('') : '<div class="empty-state small">Nenhuma entrega em atraso.</div>';
 
   return (
     '<div class="card cal-card">'+
