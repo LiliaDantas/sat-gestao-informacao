@@ -34,6 +34,8 @@
   --info:#3B6FA0;      --info-soft:#DCE8F2;      --info-ink:#274B6B;
   --neutral:#66716A;   --neutral-soft:#E7E9E1;   --neutral-ink:#454E48;
   --sidebar-bg:#8B0000; --sidebar-ink:#FAEEF0;
+  --sat:#2F9BD6;    --sat-soft:#DCF0FA;    --sat-ink:#1B5E82;
+  --orgao:#009B3A;  --orgao-soft:#DAF3E3;  --orgao-ink:#00722B;
   --shadow: 0 1px 2px rgba(20,30,25,.06), 0 1px 1px rgba(20,30,25,.04);
   --radius-s:6px; --radius-m:10px; --radius-l:16px;
   --font-display:"Source Serif 4", Georgia, "Times New Roman", serif;
@@ -63,6 +65,8 @@
     --info:#7FAEDD;      --info-soft:#182B3C;      --info-ink:#AECBEC;
     --neutral:#9CA89F;   --neutral-soft:#212D25;   --neutral-ink:#B7C1BA;
     --sidebar-bg:#380000; --sidebar-ink:#F1DFE1;
+    --sat:#6FBEE8; --sat-soft:#132C3A; --sat-ink:#9ED4EF;
+    --orgao:#4CC583; --orgao-soft:#0F2A1B; --orgao-ink:#7FDDA8;
     --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 1px rgba(0,0,0,.25);
   }
 }
@@ -77,6 +81,8 @@
   --info:#7FAEDD; --info-soft:#182B3C; --info-ink:#AECBEC;
   --neutral:#9CA89F; --neutral-soft:#212D25; --neutral-ink:#B7C1BA;
   --sidebar-bg:#1A0000; --sidebar-ink:#EFDFE1;
+  --sat:#6FBEE8; --sat-soft:#132C3A; --sat-ink:#9ED4EF;
+  --orgao:#4CC583; --orgao-soft:#0F2A1B; --orgao-ink:#7FDDA8;
   --shadow: 0 1px 2px rgba(0,0,0,.35), 0 1px 1px rgba(0,0,0,.25);
 }
 
@@ -201,6 +207,34 @@ label .opt{ font-weight:400; color:var(--ink-muted); }
 .pill.fam-neutral{ background:var(--neutral-soft); color:var(--neutral-ink); }
 .pill.fam-good{ background:var(--good-soft); color:var(--good-ink); }
 .pill.fam-critical{ background:var(--critical-soft); color:var(--critical-ink); }
+.pill-select{
+  appearance:none; -webkit-appearance:none; -moz-appearance:none; border:none; cursor:pointer;
+  display:inline-flex; align-items:center; padding:3px 22px 3px 10px; border-radius:99px;
+  font-size:11.5px; font-weight:600; white-space:nowrap; line-height:1.5; font-family:inherit;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23666'/></svg>");
+  background-repeat:no-repeat; background-position:right 8px center;
+}
+.pill-select.fam-accent{ background-color:var(--accent-soft); color:var(--accent-soft-ink); }
+.pill-select.fam-info{ background-color:var(--info-soft); color:var(--info-ink); }
+.pill-select.fam-warn{ background-color:var(--warn-soft); color:var(--warn-ink); }
+.pill-select.fam-neutral{ background-color:var(--neutral-soft); color:var(--neutral-ink); }
+.pill-select.fam-good{ background-color:var(--good-soft); color:var(--good-ink); }
+.pill-select.fam-critical{ background-color:var(--critical-soft); color:var(--critical-ink); }
+.round-icon-btn{
+  width:34px; height:34px; border-radius:50%; border:1px solid var(--border); background:var(--surface);
+  color:var(--accent); font-size:19px; font-weight:700; cursor:pointer; display:inline-flex;
+  align-items:center; justify-content:center; line-height:1; padding:0;
+}
+.round-icon-btn:hover{ background:var(--accent-soft); }
+.despacho-jump{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; position:sticky; top:0; background:var(--bg); padding:6px 0; z-index:5; }
+.despacho-section-title{ margin:28px 0 14px; scroll-margin-top:54px; padding-bottom:8px; border-bottom:2px solid var(--sidebar-bg); }
+.despacho-section-title:first-of-type{ margin-top:0; }
+.tag-sat{ background:var(--sat-soft); color:var(--sat-ink); }
+.tag-orgao{ background:var(--orgao-soft); color:var(--orgao-ink); }
+.cal-chip.enc-sat{ background:var(--sat-soft); color:var(--sat-ink); }
+.cal-chip.enc-orgao{ background:var(--orgao-soft); color:var(--orgao-ink); }
+.filtro-row{ background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-s); padding:12px; margin-bottom:14px; }
+.textarea-principal{ background:var(--accent-soft); border-color:var(--accent-soft-ink); }
 .tag{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:6px; background:var(--surface-2); color:var(--ink-2); font-size:11.5px; font-weight:600; }
 .flag-review{ color:var(--warn); font-size:12px; font-weight:700; }
 .checkbox-cell{ width:36px; text-align:center; }
@@ -494,7 +528,7 @@ var DB = null;
 var UI = { view:'home', selectedProjetoId:null, selectedBriefingId:null, projetoTab:'geral', modal:null,
            filtros:{ q:'', orgao:'', responsavel:'', status:'', encerrados:false },
            calMonth: (new Date()).getFullYear()+'-'+((new Date()).getMonth()+1),
-           despachoTab:'projetos', despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{},
+           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{},
            projetoExpandidoId:null, briefingExpandidoId:null, briefingFiltroQ:'', atualTipoAlvo:'projeto' };
 
 /* ---------------------------------------------------------------- utils */
@@ -527,6 +561,14 @@ function statusPill(status){
   var s = status||'Sem status definido';
   var fam = STATUS_FAMILY[s] || 'neutral';
   return '<span class="pill fam-'+fam+'">'+esc(s)+'</span>';
+}
+function statusSelect(p){
+  var s = p.status||'Sem status definido';
+  var fam = STATUS_FAMILY[s] || 'neutral';
+  var opts = DB.meta.status.slice();
+  if(opts.indexOf(s)===-1) opts.unshift(s);
+  var optsHtml = opts.map(function(o){ return '<option value="'+esc(o)+'"'+(o===s?' selected':'')+'>'+esc(o)+'</option>'; }).join('');
+  return '<select class="pill-select fam-'+fam+'" data-onchange="status-change" data-id="'+p.id+'" onclick="event.stopPropagation()">'+optsHtml+'</select>';
 }
 
 var IMPACT_W = {alcance:1, valor:4, urgencia:2}, IMPACT_SUM = 7;
@@ -635,6 +677,11 @@ function removeAtualizacao(id){
   DB.atualizacoes = DB.atualizacoes.filter(function(a){return a.id!==id;});
   sbDelete('atualizacoes', id).catch(sbFail('Não foi possível remover a atualização'));
 }
+function updateAtualizacao(id, patch){
+  var a=null; for(var i=0;i<DB.atualizacoes.length;i++){ if(DB.atualizacoes[i].id===id){a=DB.atualizacoes[i];break;} } if(!a) return;
+  Object.assign(a, patch);
+  sbUpdate('atualizacoes', id, atualizacaoToRow(a)).catch(sbFail('Não foi possível salvar a atualização'));
+}
 function addAnexo(projetoId, nomeArquivo, link, autor){
   var id = uid('an');
   var a = {id:id, projetoId:projetoId, nomeArquivo:nomeArquivo, link:link, data:nowIso(), autor:autor||null};
@@ -708,7 +755,7 @@ function paintLogin(loginError){
     '<div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background:var(--bg)">'+
       '<form id="login-form" style="width:min(360px,90vw);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-l);padding:32px;box-shadow:var(--shadow)">'+
         '<h1 style="font-size:20px;margin-bottom:4px">SAT</h1>'+
-        '<p class="muted small" style="margin-bottom:20px">Superintendência de Assessoramento Técnico — acesso restrito</p>'+
+        '<p class="muted small" style="margin-bottom:20px">SAT — Gestão da Informação</p>'+
         (loginError ? '<div class="banner" style="border-color:var(--critical);color:var(--critical-ink);background:var(--critical-soft);margin-bottom:14px">'+esc(loginError)+'</div>' : '')+
         '<div class="field"><label>E-mail</label><input class="input" type="email" id="login-email" required autofocus></div>'+
         '<div class="field"><label>Senha</label><input class="input" type="password" id="login-senha" required></div>'+
@@ -785,13 +832,12 @@ function paint(){
 
 var NAV_ITEMS = [
   {id:'home', label:'Home', ic:'⌂'},
+  {id:'atualizacoes', label:'Registrar atualização', ic:'✎'},
   {id:'projetos', label:'Projetos', ic:'▤'},
   {id:'briefings', label:'Briefings e Estudos', ic:'▧'},
-  {id:'atualizacoes', label:'Registrar atualização', ic:'✎'},
-  {id:'relatorio', label:'Relatório gerencial', ic:'▲'},
-  {id:'despacho', label:'Despacho', ic:'☑'}
+  {id:'despacho', label:'Despacho', ic:'☑'},
+  {id:'relatorio', label:'Administração', ic:'▲'}
 ];
-var DESPACHO_TABS = [['projetos','Projetos selecionados'],['calendario','Calendário'],['pautas','Outras Pautas']];
 function despachoCount(){ return DB.despachoSelecionados.length; }
 function viewTitle(v){
   if(v==='projeto-detail'){ var p=getProjeto(UI.selectedProjetoId); return p? p.nome : 'Projeto'; }
@@ -837,8 +883,8 @@ function renderTopbar(){
   } else if(UI.view==='briefing-detail'){
     actions = '<button class="btn btn-ghost" data-action="nav" data-view="briefings">← Voltar</button>';
   } else if(UI.view==='despacho'){
-    if(UI.despachoTab==='calendario') actions = '<button class="btn btn-primary" data-action="new-marco-global">+ Nova entrega</button>';
-    else if(UI.despachoTab==='projetos' && despachoCount()>0) actions = '<button class="btn btn-ghost" data-action="despacho-clear">Limpar despacho</button>';
+    actions = '<button class="btn btn-primary" data-action="new-marco-global">+ Nova entrega</button>';
+    if(despachoCount()>0) actions = '<button class="btn btn-ghost" data-action="despacho-clear">Limpar despacho</button> '+actions;
   }
   if(UI.view!=='home'){
     actions = '<button class="btn btn-ghost" data-action="nav" data-view="home">⌂ Início</button>' + actions;
@@ -866,7 +912,7 @@ var HOME_SHORTCUTS = [
   {view:'projetos', ic:'▤', title:'Projetos', desc:'Consulte e atualize o cadastro de projetos em acompanhamento.'},
   {view:'briefings', ic:'▧', title:'Briefings e Estudos', desc:'Acompanhe temas em elaboração, prazos e orientações.'},
   {view:'atualizacoes', ic:'✎', title:'Registrar atualização', desc:'Inclua um novo registro em um projeto, briefing ou estudo.'},
-  {view:'relatorio', ic:'▲', title:'Relatório gerencial', desc:'Veja indicadores, prazos e pendências consolidadas.'},
+  {view:'relatorio', ic:'▲', title:'Administração', desc:'Veja indicadores, prazos e pendências consolidadas.'},
   {view:'despacho', ic:'☑', title:'Despacho', desc:'Reúna projetos selecionados, calendário e outras pautas.'}
 ];
 function renderHome(){
@@ -982,7 +1028,7 @@ function renderProjetos(){
       '<td class="strong">'+esc(p.nome)+(p.revisarCadastro?' <span class="flag-review" title="Cadastro migrado — revisar">⚑</span>':'')+'</td>'+
       '<td>'+esc(p.orgao||'—')+'</td>'+
       '<td>'+esc(p.responsavel||'—')+'</td>'+
-      '<td>'+statusPill(p.status)+'</td>'+
+      '<td>'+statusSelect(p)+'</td>'+
       '<td class="mono">'+(d===null?'—':(d===0?'hoje':d+'d atrás'))+'</td>'+
     '</tr>';
     if(expanded){
@@ -1009,16 +1055,19 @@ function renderProjetos(){
 
 /* ----------------------------------------------------------------- despacho */
 function renderDespacho(){
-  var tabsHtml = DESPACHO_TABS.map(function(t){
-    var label = esc(t[1]);
-    if(t[0]==='projetos' && despachoCount()>0) label += ' ('+despachoCount()+')';
-    return '<button class="tab'+(UI.despachoTab===t[0]?' active':'')+'" data-action="despacho-tab" data-tab="'+t[0]+'">'+label+'</button>';
-  }).join('');
-  var body;
-  if(UI.despachoTab==='calendario') body = renderCalendario();
-  else if(UI.despachoTab==='pautas') body = renderDespachoPautas();
-  else body = renderDespachoProjetos();
-  return '<div class="tabs">'+tabsHtml+'</div>'+body;
+  var contagem = despachoCount()>0 ? ' ('+despachoCount()+')' : '';
+  var anchors = '<div class="despacho-jump">'+
+    '<a href="#desp-projetos" class="btn btn-sm btn-ghost">Projetos selecionados'+contagem+'</a>'+
+    '<a href="#desp-calendario" class="btn btn-sm btn-ghost">Calendário</a>'+
+    '<a href="#desp-pautas" class="btn btn-sm btn-ghost">Outras Pautas</a>'+
+  '</div>';
+  return anchors+
+    '<h2 id="desp-projetos" class="despacho-section-title">Projetos selecionados'+contagem+'</h2>'+
+    renderDespachoProjetos()+
+    '<h2 id="desp-calendario" class="despacho-section-title">Calendário</h2>'+
+    renderCalendario()+
+    '<h2 id="desp-pautas" class="despacho-section-title">Outras Pautas</h2>'+
+    renderDespachoPautas();
 }
 function renderDespachoProjetos(){
   var ids = DB.despachoSelecionados;
@@ -1043,27 +1092,37 @@ function ultimaAtualizacaoDoProjeto(id){
 function renderDespachoCard(p){
   var ultima = ultimaAtualizacaoDoProjeto(p.id);
   var encAberto = !!UI.despachoEncAberto[p.id];
-  var ultimaHtml = ultima ?
-    '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
-      '<div class="tl-meta">'+fmtDateTime(ultima.data)+'</div>'+
-      '<div class="tl-text">'+mdLite(ultima.texto)+'</div></div></div>'
-    : '<div class="empty-state small">Nenhuma atualização registrada para este projeto.</div>';
+  var editando = !!UI.despachoEditTexto[p.id] && ultima;
+  var ultimaHtml;
+  if(editando){
+    ultimaHtml = '<div class="field"><textarea class="textarea" data-despacho-edit="'+p.id+'">'+esc(ultima.texto)+'</textarea></div>'+
+      '<div class="flex gap8" style="margin-top:6px">'+
+        '<button class="btn btn-sm btn-primary" data-action="despacho-atual-save" data-id="'+p.id+'" data-atual="'+ultima.id+'">Salvar</button>'+
+        '<button class="btn btn-sm btn-ghost" data-action="despacho-atual-cancel" data-id="'+p.id+'">Cancelar</button>'+
+      '</div>';
+  } else if(ultima){
+    ultimaHtml = '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
+      '<div class="tl-meta">'+fmtDateTime(ultima.data)+
+        '<span class="spacer"></span><button class="icon-btn" title="Editar texto" data-action="despacho-atual-edit" data-id="'+p.id+'">✎</button></div>'+
+      '<div class="tl-text">'+mdLite(ultima.texto)+'</div></div></div>';
+  } else {
+    ultimaHtml = '<div class="empty-state small">Nenhuma atualização registrada para este projeto.</div>';
+  }
   var encFormHtml = encAberto ?
     '<form data-form="despacho-encaminhamento" data-projeto="'+p.id+'" style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">'+
       '<div class="field"><label>Encaminhamento</label><textarea class="textarea" name="texto" placeholder="Registre aqui uma nota sobre este projeto para o despacho…" required data-autofocus></textarea></div>'+
-      '<div class="field-row"><div class="field" style="max-width:260px"><label>Autor</label>'+autorSelect()+'</div>'+
-        '<div class="field" style="align-self:flex-end"><button class="btn btn-primary" type="submit">Registrar</button></div></div>'+
+      '<button class="btn btn-primary btn-sm" type="submit" style="margin-top:8px">Registrar</button>'+
     '</form>'
     : '';
   return '<div class="card" style="margin-bottom:16px">'+
     '<div class="flex gap12" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:10px">'+
       '<h3 style="margin:0"><button class="link-btn" style="font:inherit;color:inherit" data-action="open-projeto" data-id="'+p.id+'">'+esc(p.nome)+'</button></h3>'+
-      '<div class="flex gap8">'+
-        '<button class="btn btn-sm btn-ghost" data-action="despacho-enc-toggle" data-id="'+p.id+'">'+(encAberto?'– Encaminhamento':'+ Encaminhamento')+'</button>'+
-        '<button class="icon-btn" title="Remover do despacho" data-action="despacho-remove" data-id="'+p.id+'">✕</button>'+
-      '</div>'+
+      '<button class="icon-btn" title="Remover do despacho" data-action="despacho-remove" data-id="'+p.id+'">✕</button>'+
     '</div>'+
     ultimaHtml+
+    '<div style="margin-top:10px;text-align:center">'+
+      '<button class="round-icon-btn" title="'+(encAberto?'Fechar encaminhamento':'Adicionar encaminhamento')+'" data-action="despacho-enc-toggle" data-id="'+p.id+'">'+(encAberto?'–':'+')+'</button>'+
+    '</div>'+
     encFormHtml+
   '</div>';
 }
@@ -1073,19 +1132,17 @@ function renderProjetoDetail(){
   var p = getProjeto(UI.selectedProjetoId);
   if(!p) return '<div class="empty-state">Projeto não encontrado. <button class="link-btn" data-action="nav" data-view="projetos">Voltar à lista</button></div>';
   var tabs = [['geral','Visão geral'],['atualizacoes','Atualizações ('+atualizacoesOf(p.id).length+')'],
-    ['anexos','Anexos ('+anexosOf(p.id).length+')'],['marcos','Entregas/Marcos ('+marcosOf(p.id).length+')'],['avaliacao','Avaliação']];
+    ['anexos','Anexos ('+anexosOf(p.id).length+')']];
   var tabsHtml = tabs.map(function(t){ return '<button class="tab'+(UI.projetoTab===t[0]?' active':'')+'" data-action="projeto-tab" data-tab="'+t[0]+'">'+t[1]+'</button>'; }).join('');
   var body;
   if(UI.projetoTab==='atualizacoes') body = renderTabAtualizacoes(p);
   else if(UI.projetoTab==='anexos') body = renderTabAnexos(p);
-  else if(UI.projetoTab==='marcos') body = renderTabMarcos(p);
-  else if(UI.projetoTab==='avaliacao') body = renderTabAvaliacao(p);
   else body = renderTabGeral(p);
 
   return (
     '<div class="card">'+
       '<div class="flex gap12" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:6px">'+
-        '<div class="flex gap8" style="flex-wrap:wrap">'+statusPill(p.status)+
+        '<div class="flex gap8" style="flex-wrap:wrap">'+statusSelect(p)+
           '<span class="muted small">'+esc(p.orgao||'—')+' · responsável técnico: '+esc(p.responsavel||'—')+'</span></div>'+
         '<div class="flex gap8">'+
           '<button class="btn btn-sm" data-action="edit-projeto" data-id="'+p.id+'">Editar cadastro</button>'+
@@ -1120,6 +1177,8 @@ function renderAtualizacoesTimeline(tipo, id){
     return '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
       '<div class="tl-meta"><span class="tl-author">'+esc(a.autor||'—')+'</span>·<span>'+fmtDateTime(a.data)+'</span>'+
       (a.origem==='encaminhamento'?'<span class="tag" title="Registrado a partir do Despacho">encaminhamento</span>':
+        a.origem==='encaminhamento-sat'?'<span class="tag tag-sat" title="Encaminhamento para o Calendário">Encaminhamento SAT</span>':
+        a.origem==='encaminhamento-orgao'?'<span class="tag tag-orgao" title="Encaminhamento para o Calendário">Encaminhamento Órgão</span>':
         (a.origem&&a.origem!=='manual'?'<span class="tl-origin">'+(a.origem==='comment'?'migrado · comentário':'migrado · descrição')+'</span>':''))+
       '<span class="spacer"></span><button class="icon-btn" title="Remover" data-action="del-atualizacao" data-id="'+a.id+'">✕</button></div>'+
       '<div class="tl-text">'+mdLite(a.texto)+'</div></div></div>';
@@ -1298,21 +1357,23 @@ function renderAtualizacoesView(){
       .map(function(p){ return '<option value="'+p.id+'" data-orgao="'+esc(p.orgao||'')+'"'+(p.id===selectedId?' selected':'')+'>'+esc(p.nome)+(p.encerrado?' (encerrado)':'')+'</option>'; }).join('');
     formHtml = '<form data-form="nova-atualizacao-global">'+
       '<input type="hidden" name="tipoAlvo" value="projeto">'+
-      '<div class="field-row">'+
-        '<div class="field" style="max-width:220px"><label>Filtrar por órgão <span class="opt">opcional</span></label>'+
+      '<div class="field-row filtro-row">'+
+        '<div class="field" style="max-width:200px"><label>Filtrar por órgão <span class="opt">opcional</span></label>'+
           '<select class="select" data-onchange="atual-orgao-filtro">'+selectOptions(DB.meta.orgaos,'','Todos os órgãos')+'</select></div>'+
         '<div class="field" style="flex:2"><label>Projeto</label><select class="select" name="alvoId" id="atual-projeto-select" data-onchange="atual-projeto-mudou" required>'+
           (selectedId?'':'<option value="">Selecione…</option>')+opts+'</select></div>'+
+        '<div class="field" style="max-width:220px"><label>Autor</label>'+autorSelect()+'</div>'+
       '</div>'+
-      '<div class="field"><label>Texto da atualização</label><textarea class="textarea" name="texto" required placeholder="O que aconteceu?"></textarea></div>'+
+      '<div class="field"><label>Texto da atualização</label><textarea class="textarea textarea-principal" name="texto" required placeholder="O que aconteceu?"></textarea></div>'+
       '<div class="field-row">'+
-        '<div class="field" style="max-width:260px"><label>Autor</label>'+autorSelect()+'</div>'+
         '<div class="field" style="flex:2"><label>Link de anexo <span class="opt">opcional</span></label><input class="input" type="url" name="anexoLink" placeholder="https://..."></div>'+
       '</div>'+
       '<hr class="sep">'+
-      '<label style="display:block;margin-bottom:8px">Encaminhamentos <span class="opt">opcional — vai direto para o Calendário</span></label>'+
+      '<label style="display:block;margin-bottom:8px">Encaminhamentos para Calendário <span class="opt">opcional — vai direto para o Calendário</span></label>'+
       '<div class="field-row">'+
-        '<div class="field" style="max-width:200px"><label class="opt">Data</label><input class="input" type="date" name="encData"></div>'+
+        '<div class="field" style="max-width:180px"><label class="opt">Tipo</label><select class="select" name="encTipo">'+
+          '<option value="sat">Entrega SAT</option><option value="orgao">Entrega Órgão</option></select></div>'+
+        '<div class="field" style="max-width:180px"><label class="opt">Data</label><input class="input" type="date" name="encData"></div>'+
         '<div class="field" style="flex:2"><label class="opt">Conteúdo do encaminhamento</label><input class="input" name="encTexto" placeholder="Ex.: Cobrar retorno da SEF até essa data"></div>'+
       '</div>'+
       '<button class="btn btn-primary" type="submit">Registrar</button>'+
@@ -1343,8 +1404,9 @@ function renderCalendario(){
     var isToday = dateObj.getTime()===today.getTime();
     var items = (byDay[key]||[]).map(function(mk){
       var p = getProjeto(mk.projetoId); var late = isMarcoAtrasado(mk);
-      var cls = mk.status==='concluído'?'done':(late?'late':(mk.tipo==='encaminhamento'?'enc':''));
-      var kindLbl = mk.tipo==='encaminhamento'?'Encaminhamento':'Entrega';
+      var cls = mk.status==='concluído'?'done':(late?'late':
+        (mk.tipo==='encaminhamento-sat'?'enc-sat':(mk.tipo==='encaminhamento-orgao'?'enc-orgao':(mk.tipo==='encaminhamento'?'enc':''))));
+      var kindLbl = mk.tipo==='encaminhamento-sat'?'Encaminhamento SAT':(mk.tipo==='encaminhamento-orgao'?'Encaminhamento Órgão':(mk.tipo==='encaminhamento'?'Encaminhamento':'Entrega'));
       return '<div class="cal-chip '+cls+'" data-action="open-projeto" data-id="'+esc(mk.projetoId)+'" title="'+kindLbl+': '+esc(mk.descricao)+' — '+esc(p?p.nome:'')+'">'+esc(mk.descricao)+'</div>';
     }).join('');
     cells += '<div class="cal-cell'+(isToday?' today':'')+'"><div class="cal-daynum">'+d+'</div>'+items+'</div>';
@@ -1659,19 +1721,31 @@ function handleAction(action, el, e){
     UI.calMonth = y+'-'+(m+1); paint();
   } else if(action==='new-marco-global'){
     openModal('marco-form', {mode:'create'});
-  } else if(action==='despacho-tab'){
-    UI.despachoTab = el.dataset.tab; paint();
   } else if(action==='despacho-enc-toggle'){
     UI.despachoEncAberto[id] = !UI.despachoEncAberto[id]; paint();
+  } else if(action==='despacho-atual-edit'){
+    UI.despachoEditTexto[id] = true; paint();
+  } else if(action==='despacho-atual-cancel'){
+    UI.despachoEditTexto[id] = false; paint();
+  } else if(action==='despacho-atual-save'){
+    var atualId = el.dataset.atual;
+    var ta = document.querySelector('[data-despacho-edit="'+id+'"]');
+    var novoTexto = ta ? ta.value.trim() : '';
+    if(!novoTexto) return;
+    mutate(function(){
+      updateAtualizacao(atualId, {texto: novoTexto});
+      UI.despachoEditTexto[id] = false;
+    });
+    toast('Atualização editada.', 'ok');
   } else if(action==='despacho-remove'){
     mutate(function(){
       toggleDespachoSelecionado(id, false);
-      delete UI.despachoEncAberto[id];
+      delete UI.despachoEncAberto[id]; delete UI.despachoEditTexto[id];
     });
   } else if(action==='despacho-clear'){
     mutate(function(){
       DB.despachoSelecionados = [];
-      UI.despachoEncAberto = {};
+      UI.despachoEncAberto = {}; UI.despachoEditTexto = {};
     });
   } else if(action==='export-csv'){
     var csv = exportProjetosCsv();
@@ -1716,8 +1790,13 @@ function handleChange(kind, el){
     var pid = el.dataset.id, wasChecked = el.checked;
     mutate(function(){
       toggleDespachoSelecionado(pid, wasChecked);
-      if(!wasChecked){ delete UI.despachoEncAberto[pid]; }
+      if(!wasChecked){ delete UI.despachoEncAberto[pid]; delete UI.despachoEditTexto[pid]; }
     });
+  }
+  else if(kind==='status-change'){
+    var pidStatus = el.dataset.id, novoStatus = el.value;
+    mutate(function(){ updateProjeto(pidStatus, {status: novoStatus}); });
+    toast('Status atualizado.', 'ok');
   }
   else if(kind==='despacho-pauta'){
     mutate(function(){ setDespachoPauta(el.value); });
@@ -1741,6 +1820,7 @@ function handleFormSubmit(kind, form){
     if(autor) setLastAutor(autor);
     var isProjeto = tipoAlvo==='projeto';
     var anexoLink = (isGlobal && isProjeto) ? (fd.get('anexoLink')||'').toString().trim() : '';
+    var encTipo = (isGlobal && isProjeto) ? (fd.get('encTipo')||'sat') : null;
     var encData = (isGlobal && isProjeto) ? fromDateInputVal(fd.get('encData')) : null;
     var encTexto = (isGlobal && isProjeto) ? (fd.get('encTexto')||'').toString().trim() : '';
     if(isGlobal && isProjeto && ((encData && !encTexto) || (!encData && encTexto))){
@@ -1750,15 +1830,18 @@ function handleFormSubmit(kind, form){
     mutate(function(){
       addAtualizacao(tipoAlvo, alvoId, texto, autor);
       if(anexoLink) addAnexo(alvoId, guessFileNameFromUrl(anexoLink), anexoLink, autor);
-      if(encData && encTexto) addMarco(alvoId, encTexto, encData, 'previsto', 'encaminhamento');
+      if(encData && encTexto){
+        var marcoTipo = encTipo==='orgao' ? 'encaminhamento-orgao' : 'encaminhamento-sat';
+        addMarco(alvoId, encTexto, encData, 'previsto', marcoTipo);
+        addAtualizacao(tipoAlvo, alvoId, encTexto, autor, marcoTipo);
+      }
     });
     if(isGlobal) toast('Atualização registrada'+(anexoLink?' com anexo':'')+(encData&&encTexto?' e encaminhamento no calendário':'')+'.', 'ok');
   } else if(kind==='despacho-encaminhamento'){
     var pidEnc = form.dataset.projeto;
     var textoEnc = (fd.get('texto')||'').toString().trim();
     if(!pidEnc || !textoEnc) return;
-    var autorEnc = resolveAutor(form);
-    if(autorEnc) setLastAutor(autorEnc);
+    var autorEnc = SB_SESSION ? SB_SESSION.email : null;
     mutate(function(){
       addAtualizacao('projeto', pidEnc, textoEnc, autorEnc, 'encaminhamento');
       UI.despachoEncAberto[pidEnc] = false;
