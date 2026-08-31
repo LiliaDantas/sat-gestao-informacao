@@ -603,6 +603,7 @@ function normalizeDB(){
   if(!DB.marcos) DB.marcos = [];
   DB.marcos.forEach(function(m){ if(!m.tipo) m.tipo='marco'; });
   if(!DB.despachoSelecionados) DB.despachoSelecionados = [];
+  if(!DB.despachoBriefingsSelecionados) DB.despachoBriefingsSelecionados = [];
   if(DB.despachoPauta==null) DB.despachoPauta = '';
   if(!DB.briefings) DB.briefings = [];
   DB.atualizacoes.forEach(function(a){ if(!a.alvoTipo) a.alvoTipo='projeto'; });
@@ -611,6 +612,11 @@ function toggleDespachoSelecionado(id, on){
   var idx = DB.despachoSelecionados.indexOf(id);
   if(on && idx===-1) DB.despachoSelecionados.push(id);
   else if(!on && idx!==-1) DB.despachoSelecionados.splice(idx,1);
+}
+function toggleDespachoBriefing(id, on){
+  var idx = DB.despachoBriefingsSelecionados.indexOf(id);
+  if(on && idx===-1) DB.despachoBriefingsSelecionados.push(id);
+  else if(!on && idx!==-1) DB.despachoBriefingsSelecionados.splice(idx,1);
 }
 function setDespachoPauta(texto){ DB.despachoPauta = texto; }
 function guessFileNameFromUrl(url){
@@ -839,6 +845,8 @@ var NAV_ITEMS = [
   {id:'relatorio', label:'Administração', ic:'▲'}
 ];
 function despachoCount(){ return DB.despachoSelecionados.length; }
+function despachoBriefingCount(){ return DB.despachoBriefingsSelecionados.length; }
+function despachoTotalCount(){ return despachoCount() + despachoBriefingCount(); }
 function viewTitle(v){
   if(v==='projeto-detail'){ var p=getProjeto(UI.selectedProjetoId); return p? p.nome : 'Projeto'; }
   if(v==='briefing-detail'){ var b=getBriefing(UI.selectedBriefingId); return b? b.tema : 'Briefing'; }
@@ -847,7 +855,7 @@ function viewTitle(v){
 }
 
 function renderShell(){
-  var dCount = despachoCount();
+  var dCount = despachoTotalCount();
   var navHtml = NAV_ITEMS.map(function(n){
     var active = (UI.view===n.id) || (n.id==='projetos' && UI.view==='projeto-detail') || (n.id==='briefings' && UI.view==='briefing-detail');
     var badge = (n.id==='despacho' && dCount>0) ? '<span class="nav-count">'+dCount+'</span>' : '';
@@ -884,7 +892,7 @@ function renderTopbar(){
     actions = '<button class="btn btn-ghost" data-action="nav" data-view="briefings">← Voltar</button>';
   } else if(UI.view==='despacho'){
     actions = '<button class="btn btn-primary" data-action="new-marco-global">+ Nova entrega</button>';
-    if(despachoCount()>0) actions = '<button class="btn btn-ghost" data-action="despacho-clear">Limpar despacho</button> '+actions;
+    if(despachoTotalCount()>0) actions = '<button class="btn btn-ghost" data-action="despacho-clear">Limpar despacho</button> '+actions;
   }
   if(UI.view!=='home'){
     actions = '<button class="btn btn-ghost" data-action="nav" data-view="home">⌂ Início</button>' + actions;
@@ -1056,14 +1064,18 @@ function renderProjetos(){
 /* ----------------------------------------------------------------- despacho */
 function renderDespacho(){
   var contagem = despachoCount()>0 ? ' ('+despachoCount()+')' : '';
+  var contagemB = despachoBriefingCount()>0 ? ' ('+despachoBriefingCount()+')' : '';
   var anchors = '<div class="despacho-jump">'+
     '<a href="#desp-projetos" class="btn btn-sm btn-ghost">Projetos selecionados'+contagem+'</a>'+
+    '<a href="#desp-briefings" class="btn btn-sm btn-ghost">Briefings selecionados'+contagemB+'</a>'+
     '<a href="#desp-calendario" class="btn btn-sm btn-ghost">Calendário</a>'+
     '<a href="#desp-pautas" class="btn btn-sm btn-ghost">Outras Pautas</a>'+
   '</div>';
   return anchors+
     '<h2 id="desp-projetos" class="despacho-section-title">Projetos selecionados'+contagem+'</h2>'+
     renderDespachoProjetos()+
+    '<h2 id="desp-briefings" class="despacho-section-title">Briefings selecionados'+contagemB+'</h2>'+
+    renderDespachoBriefings()+
     '<h2 id="desp-calendario" class="despacho-section-title">Calendário</h2>'+
     renderCalendario()+
     '<h2 id="desp-pautas" class="despacho-section-title">Outras Pautas</h2>'+
@@ -1076,7 +1088,7 @@ function renderDespachoProjetos(){
       'Marque a caixa "Despacho" na lista de <button class="link-btn" data-action="nav" data-view="projetos">Projetos</button> para enviar itens para cá.</div>';
   }
   var projs = ids.map(getProjeto).filter(Boolean)
-    .sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
+    .sort(function(a,b){ return new Date(b.dataUltimaAtualizacao||0) - new Date(a.dataUltimaAtualizacao||0); });
   return projs.map(renderDespachoCard).join('');
 }
 function renderDespachoPautas(){
@@ -1088,6 +1100,58 @@ function ultimaAtualizacaoDoProjeto(id){
   var list = DB.atualizacoes.filter(function(a){ return (a.alvoTipo||'projeto')==='projeto' && a.projetoId===id; })
     .sort(function(a,b){ return new Date(b.data)-new Date(a.data); });
   return list[0] || null;
+}
+function ultimaAtualizacaoDoBriefing(id){
+  var list = DB.atualizacoes.filter(function(a){ return a.alvoTipo==='briefing' && a.projetoId===id; })
+    .sort(function(a,b){ return new Date(b.data)-new Date(a.data); });
+  return list[0] || null;
+}
+function renderDespachoBriefings(){
+  var ids = DB.despachoBriefingsSelecionados;
+  if(!ids.length){
+    return '<div class="empty-state"><div class="big">☑</div>Nenhum briefing/estudo no despacho ainda.<br>'+
+      'Marque a caixa "Despacho" na lista de <button class="link-btn" data-action="nav" data-view="briefings">Briefings e Estudos</button> para enviar itens para cá.</div>';
+  }
+  var itens = ids.map(getBriefing).filter(Boolean)
+    .sort(function(a,b){ return new Date(b.dataUltimaAtualizacao||0) - new Date(a.dataUltimaAtualizacao||0); });
+  return itens.map(renderDespachoBriefingCard).join('');
+}
+function renderDespachoBriefingCard(b){
+  var ultima = ultimaAtualizacaoDoBriefing(b.id);
+  var encAberto = !!UI.despachoEncAberto[b.id];
+  var editando = !!UI.despachoEditTexto[b.id] && ultima;
+  var ultimaHtml;
+  if(editando){
+    ultimaHtml = '<div class="field"><textarea class="textarea" data-despacho-edit="'+b.id+'">'+esc(ultima.texto)+'</textarea></div>'+
+      '<div class="flex gap8" style="margin-top:6px">'+
+        '<button class="btn btn-sm btn-primary" data-action="despacho-atual-save" data-id="'+b.id+'" data-atual="'+ultima.id+'">Salvar</button>'+
+        '<button class="btn btn-sm btn-ghost" data-action="despacho-atual-cancel" data-id="'+b.id+'">Cancelar</button>'+
+      '</div>';
+  } else if(ultima){
+    ultimaHtml = '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
+      '<div class="tl-meta">'+fmtDateTime(ultima.data)+
+        '<span class="spacer"></span><button class="icon-btn" title="Editar texto" data-action="despacho-atual-edit" data-id="'+b.id+'">✎</button></div>'+
+      '<div class="tl-text">'+mdLite(ultima.texto)+'</div></div></div>';
+  } else {
+    ultimaHtml = '<div class="empty-state small">Nenhuma atualização registrada para este briefing/estudo.</div>';
+  }
+  var encFormHtml = encAberto ?
+    '<form data-form="despacho-encaminhamento-briefing" data-briefing="'+b.id+'" style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">'+
+      '<div class="field"><label>Encaminhamento</label><textarea class="textarea" name="texto" placeholder="Registre aqui uma nota sobre este briefing/estudo para o despacho…" required data-autofocus></textarea></div>'+
+      '<button class="btn btn-primary btn-sm" type="submit" style="margin-top:8px">Registrar</button>'+
+    '</form>'
+    : '';
+  return '<div class="card" style="margin-bottom:16px">'+
+    '<div class="flex gap12" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:10px">'+
+      '<h3 style="margin:0"><button class="link-btn" style="font:inherit;color:inherit" data-action="open-briefing" data-id="'+b.id+'">'+esc(b.tema)+'</button></h3>'+
+      '<button class="icon-btn" title="Remover do despacho" data-action="despacho-remove-briefing" data-id="'+b.id+'">✕</button>'+
+    '</div>'+
+    ultimaHtml+
+    '<div style="margin-top:10px;text-align:center">'+
+      '<button class="round-icon-btn" title="'+(encAberto?'Fechar encaminhamento':'Adicionar encaminhamento')+'" data-action="despacho-enc-toggle" data-id="'+b.id+'">'+(encAberto?'–':'+')+'</button>'+
+    '</div>'+
+    encFormHtml+
+  '</div>';
 }
 function renderDespachoCard(p){
   var ultima = ultimaAtualizacaoDoProjeto(p.id);
@@ -1267,7 +1331,9 @@ function renderBriefings(){
   var rows = list.map(function(b){
     var d = daysSince(b.dataUltimaAtualizacao);
     var expanded = UI.briefingExpandidoId === b.id;
+    var checked = DB.despachoBriefingsSelecionados.indexOf(b.id)!==-1 ? ' checked' : '';
     var row = '<tr class="clickable'+(expanded?' expanded':'')+'" data-action="briefing-expand-toggle" data-id="'+b.id+'">'+
+      '<td class="checkbox-cell"><input type="checkbox" title="Enviar para Despacho" data-onchange="despacho-toggle-briefing" data-id="'+b.id+'"'+checked+'></td>'+
       '<td class="strong">'+esc(b.tema)+'</td>'+
       '<td>'+fmtDate(b.dataSolicitacao)+'</td>'+
       '<td>'+fmtDate(b.prazoEntrega)+'</td>'+
@@ -1275,7 +1341,7 @@ function renderBriefings(){
     '</tr>';
     if(expanded){
       var ultima = atualizacoesOf(b.id)[0];
-      row += '<tr class="expand-row"><td colspan="4"><div class="expand-panel">'+
+      row += '<tr class="expand-row"><td colspan="5"><div class="expand-panel">'+
         '<div class="expand-label">Última atualização</div>'+
         (ultima ? '<div class="tl-item" style="margin-bottom:14px"><div class="tl-dot"></div><div class="tl-body">'+
           '<div class="tl-meta"><span>'+fmtDateTime(ultima.data)+'</span></div>'+
@@ -1293,7 +1359,7 @@ function renderBriefings(){
         '<input class="input" placeholder="Tema, detalhamento…" value="'+esc(UI.briefingFiltroQ||'')+'" data-onchange="briefing-filtro-q"></div></div>'+
     '</div>'+
     '<div class="hint" style="margin-bottom:10px">'+list.length+' briefing(s)/estudo(s)</div>'+
-    (list.length ? '<div class="table-wrap"><table class="tbl-red"><thead><tr><th>Tema</th><th>Data da solicitação</th><th>Prazo de entrega</th><th>Últ. atualização</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    (list.length ? '<div class="table-wrap"><table class="tbl-red"><thead><tr><th>Despacho</th><th>Tema</th><th>Data da solicitação</th><th>Prazo de entrega</th><th>Últ. atualização</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
       : '<div class="empty-state"><div class="big">—</div>Nenhum briefing/estudo cadastrado ainda.</div>')
   );
 }
@@ -1742,9 +1808,14 @@ function handleAction(action, el, e){
       toggleDespachoSelecionado(id, false);
       delete UI.despachoEncAberto[id]; delete UI.despachoEditTexto[id];
     });
+  } else if(action==='despacho-remove-briefing'){
+    mutate(function(){
+      toggleDespachoBriefing(id, false);
+      delete UI.despachoEncAberto[id]; delete UI.despachoEditTexto[id];
+    });
   } else if(action==='despacho-clear'){
     mutate(function(){
-      DB.despachoSelecionados = [];
+      DB.despachoSelecionados = []; DB.despachoBriefingsSelecionados = [];
       UI.despachoEncAberto = {}; UI.despachoEditTexto = {};
     });
   } else if(action==='export-csv'){
@@ -1791,6 +1862,13 @@ function handleChange(kind, el){
     mutate(function(){
       toggleDespachoSelecionado(pid, wasChecked);
       if(!wasChecked){ delete UI.despachoEncAberto[pid]; delete UI.despachoEditTexto[pid]; }
+    });
+  }
+  else if(kind==='despacho-toggle-briefing'){
+    var bid = el.dataset.id, wasCheckedB = el.checked;
+    mutate(function(){
+      toggleDespachoBriefing(bid, wasCheckedB);
+      if(!wasCheckedB){ delete UI.despachoEncAberto[bid]; delete UI.despachoEditTexto[bid]; }
     });
   }
   else if(kind==='status-change'){
@@ -1847,6 +1925,16 @@ function handleFormSubmit(kind, form){
       UI.despachoEncAberto[pidEnc] = false;
     });
     toast('Encaminhamento registrado no histórico do projeto.', 'ok');
+  } else if(kind==='despacho-encaminhamento-briefing'){
+    var bidEnc = form.dataset.briefing;
+    var textoEncB = (fd.get('texto')||'').toString().trim();
+    if(!bidEnc || !textoEncB) return;
+    var autorEncB = SB_SESSION ? SB_SESSION.email : null;
+    mutate(function(){
+      addAtualizacao('briefing', bidEnc, textoEncB, autorEncB, 'encaminhamento');
+      UI.despachoEncAberto[bidEnc] = false;
+    });
+    toast('Encaminhamento registrado no histórico do briefing/estudo.', 'ok');
   } else if(kind==='novo-anexo'){
     var pid = form.dataset.projeto;
     var nome = (fd.get('nomeArquivo')||'').toString().trim();
