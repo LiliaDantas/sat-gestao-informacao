@@ -447,21 +447,21 @@ function projetoToRow(p){
 }
 function rowToBriefing(r){
   return { id:r.id, tema:r.tema, dataSolicitacao:r.data_solicitacao, prazoEntrega:r.prazo_entrega,
-    detalhamento:r.detalhamento||"", anexoLink:r.anexo_link||"",
+    detalhamento:r.detalhamento||"", anexoLink:r.anexo_link||"", encerrado:!!r.encerrado,
     dataCriacao:r.data_criacao, dataUltimaAtualizacao:r.data_ultima_atualizacao };
 }
 function briefingToRow(b){
   return { id:b.id, tema:b.tema, data_solicitacao:b.dataSolicitacao||null, prazo_entrega:b.prazoEntrega||null,
-    detalhamento:b.detalhamento||null, anexo_link:b.anexoLink||null,
+    detalhamento:b.detalhamento||null, anexo_link:b.anexoLink||null, encerrado:!!b.encerrado,
     data_criacao:b.dataCriacao||null, data_ultima_atualizacao:b.dataUltimaAtualizacao||null };
 }
 function rowToAtualizacao(r){
   return { id:r.id, alvoTipo:r.alvo_tipo||"projeto", projetoId:r.alvo_id, texto:r.texto, autor:r.autor,
-    data:r.data, origem:r.origem||"manual" };
+    data:r.data, origem:r.origem||"manual", marcoId:r.marco_id||null };
 }
 function atualizacaoToRow(a){
   return { id:a.id, alvo_tipo:a.alvoTipo||"projeto", alvo_id:a.projetoId, texto:a.texto,
-    autor:a.autor||null, data:a.data||null, origem:a.origem||"manual" };
+    autor:a.autor||null, data:a.data||null, origem:a.origem||"manual", marco_id:a.marcoId||null };
 }
 function rowToAnexo(r){
   return { id:r.id, projetoId:r.projeto_id, nomeArquivo:r.nome_arquivo, link:r.link, data:r.data, autor:r.autor };
@@ -526,7 +526,7 @@ function deriveMeta(projetos){
 
 var DB = null;
 var UI = { view:'home', selectedProjetoId:null, selectedBriefingId:null, projetoTab:'geral', modal:null,
-           filtros:{ q:'', orgao:'', responsavel:'', status:'', encerrados:false },
+           filtros:{ q:'', orgao:'', responsavel:'', status:'', encerrados:false, encerradosBriefing:false },
            calMonth: (new Date()).getFullYear()+'-'+((new Date()).getMonth()+1),
            despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{},
            projetoExpandidoId:null, briefingExpandidoId:null, briefingFiltroQ:'', atualTipoAlvo:'projeto' };
@@ -583,6 +583,12 @@ function personColor(name){ return PERSON_COLOR[name] || '#66716A'; }
 
 /* ------------------------------------------------------------ data access */
 function getProjeto(id){ for(var i=0;i<DB.projetos.length;i++){ if(DB.projetos[i].id===id) return DB.projetos[i]; } return null; }
+function cadastroCompleto(p){
+  return !!(p.orgao && p.orgao.trim() && p.responsavel && p.responsavel.trim() &&
+    p.resumo && p.resumo.trim() && p.objetivo && p.objetivo.trim() &&
+    p.autoridade && p.autoridade.trim() && p.processoSei && p.processoSei.trim());
+}
+function precisaRevisao(p){ return !!p.revisarCadastro && !cadastroCompleto(p); }
 function atualizacoesOf(id){ return DB.atualizacoes.filter(function(a){return a.projetoId===id;})
   .sort(function(a,b){return new Date(b.data)-new Date(a.data);}); }
 function anexosOf(id){ return DB.anexos.filter(function(a){return a.projetoId===id;})
@@ -654,7 +660,7 @@ function getBriefing(id){
 function addBriefing(data){
   var id = uid('br');
   var b = Object.assign({
-    id:id, tema:'', dataSolicitacao:null, prazoEntrega:null, detalhamento:'', anexoLink:'',
+    id:id, tema:'', dataSolicitacao:null, prazoEntrega:null, detalhamento:'', anexoLink:'', encerrado:false,
     dataCriacao:nowIso(), dataUltimaAtualizacao:nowIso()
   }, data);
   DB.briefings.push(b);
@@ -666,9 +672,9 @@ function updateBriefing(id, patch){
   Object.assign(b, patch);
   sbUpdate('briefings', id, briefingToRow(b)).catch(sbFail('Não foi possível salvar as alterações do briefing'));
 }
-function addAtualizacao(alvoTipo, alvoId, texto, autor, origem){
+function addAtualizacao(alvoTipo, alvoId, texto, autor, origem, marcoId){
   var id = uid('at');
-  var a = {id:id, alvoTipo:alvoTipo||'projeto', projetoId:alvoId, texto:texto, autor:autor||null, data:nowIso(), origem:origem||'manual'};
+  var a = {id:id, alvoTipo:alvoTipo||'projeto', projetoId:alvoId, texto:texto, autor:autor||null, data:nowIso(), origem:origem||'manual', marcoId:marcoId||null};
   DB.atualizacoes.push(a);
   var alvo = (alvoTipo==='briefing') ? getBriefing(alvoId) : getProjeto(alvoId);
   if(alvo){
@@ -680,13 +686,16 @@ function addAtualizacao(alvoTipo, alvoId, texto, autor, origem){
   return id;
 }
 function removeAtualizacao(id){
-  DB.atualizacoes = DB.atualizacoes.filter(function(a){return a.id!==id;});
+  var a = null; for(var i=0;i<DB.atualizacoes.length;i++){ if(DB.atualizacoes[i].id===id){a=DB.atualizacoes[i];break;} }
+  DB.atualizacoes = DB.atualizacoes.filter(function(x){return x.id!==id;});
   sbDelete('atualizacoes', id).catch(sbFail('Não foi possível remover a atualização'));
+  if(a && a.marcoId) removeMarco(a.marcoId);
 }
 function updateAtualizacao(id, patch){
   var a=null; for(var i=0;i<DB.atualizacoes.length;i++){ if(DB.atualizacoes[i].id===id){a=DB.atualizacoes[i];break;} } if(!a) return;
   Object.assign(a, patch);
   sbUpdate('atualizacoes', id, atualizacaoToRow(a)).catch(sbFail('Não foi possível salvar a atualização'));
+  if(a.marcoId && patch.texto!==undefined) updateMarco(a.marcoId, {descricao: patch.texto});
 }
 function addAnexo(projetoId, nomeArquivo, link, autor){
   var id = uid('an');
@@ -1033,7 +1042,7 @@ function renderProjetos(){
     var expanded = UI.projetoExpandidoId === p.id;
     var row = '<tr class="clickable'+(expanded?' expanded':'')+'" data-action="projeto-expand-toggle" data-id="'+p.id+'">'+
       '<td class="checkbox-cell"><input type="checkbox" title="Enviar para Despacho" data-onchange="despacho-toggle" data-id="'+p.id+'"'+checked+'></td>'+
-      '<td class="strong">'+esc(p.nome)+(p.revisarCadastro?' <span class="flag-review" title="Cadastro migrado — revisar">⚑</span>':'')+'</td>'+
+      '<td class="strong">'+esc(p.nome)+(precisaRevisao(p)?' <span class="flag-review" title="Cadastro migrado — revisar">⚑</span>':'')+'</td>'+
       '<td>'+esc(p.orgao||'—')+'</td>'+
       '<td>'+esc(p.responsavel||'—')+'</td>'+
       '<td>'+statusSelect(p)+'</td>'+
@@ -1210,13 +1219,15 @@ function renderProjetoDetail(){
           '<span class="muted small">'+esc(p.orgao||'—')+' · responsável técnico: '+esc(p.responsavel||'—')+'</span></div>'+
         '<div class="flex gap8">'+
           '<button class="btn btn-sm" data-action="edit-projeto" data-id="'+p.id+'">Editar cadastro</button>'+
-          '<button class="btn btn-sm" data-action="toggle-encerrado" data-id="'+p.id+'">'+(p.encerrado?'Reabrir':'Encerrar')+'</button>'+
         '</div>'+
       '</div>'+
       
-      (p.revisarCadastro ? '<div class="banner warn">⚑ Este projeto foi migrado com status ambíguo ou não identificado. Revise o cadastro.</div>' : '')+
+      (precisaRevisao(p) ? '<div class="banner warn">⚑ Este projeto foi migrado com status ambíguo ou não identificado. Revise o cadastro.</div>' : '')+
       '<div class="tabs">'+tabsHtml+'</div>'+
       body+
+      '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">'+
+        '<button class="btn btn-sm btn-ghost" data-action="toggle-encerrado" data-id="'+p.id+'">'+(p.encerrado?'Reabrir projeto':'Encerrar projeto')+'</button>'+
+      '</div>'+
     '</div>'
   );
 }
@@ -1243,6 +1254,7 @@ function renderAtualizacoesTimeline(tipo, id){
       (a.origem==='encaminhamento'?'<span class="tag" title="Registrado a partir do Despacho">encaminhamento</span>':
         a.origem==='encaminhamento-sat'?'<span class="tag tag-sat" title="Encaminhamento para o Calendário">Encaminhamento SAT</span>':
         a.origem==='encaminhamento-orgao'?'<span class="tag tag-orgao" title="Encaminhamento para o Calendário">Encaminhamento Órgão</span>':
+        a.origem==='status'?'<span class="tag" title="Alteração de status">status</span>':
         (a.origem&&a.origem!=='manual'?'<span class="tl-origin">'+(a.origem==='comment'?'migrado · comentário':'migrado · descrição')+'</span>':''))+
       '<span class="spacer"></span><button class="icon-btn" title="Remover" data-action="del-atualizacao" data-id="'+a.id+'">✕</button></div>'+
       '<div class="tl-text">'+mdLite(a.texto)+'</div></div></div>';
@@ -1325,6 +1337,7 @@ function numField(name, label, val){
 function renderBriefings(){
   var q = (UI.briefingFiltroQ||'').trim().toLowerCase();
   var list = DB.briefings.filter(function(b){
+    if(!UI.filtros.encerradosBriefing && b.encerrado) return false;
     if(!q) return true;
     return (b.tema+' '+(b.detalhamento||'')).toLowerCase().indexOf(q)!==-1;
   }).sort(function(a,b){ return new Date(b.dataUltimaAtualizacao||0) - new Date(a.dataUltimaAtualizacao||0); });
@@ -1357,6 +1370,7 @@ function renderBriefings(){
     '<div class="filter-bar">'+
       '<div class="field" style="min-width:260px"><label>Buscar</label><div class="search-box"><span class="ic">⌕</span>'+
         '<input class="input" placeholder="Tema, detalhamento…" value="'+esc(UI.briefingFiltroQ||'')+'" data-onchange="briefing-filtro-q"></div></div>'+
+      '<div class="field"><label>&nbsp;</label><label class="flex gap6" style="font-weight:500;color:var(--ink-2)"><input type="checkbox" data-onchange="filtro-encerrados-briefing"'+(UI.filtros.encerradosBriefing?' checked':'')+'> mostrar encerrados</label></div>'+
     '</div>'+
     '<div class="hint" style="margin-bottom:10px">'+list.length+' briefing(s)/estudo(s)</div>'+
     (list.length ? '<div class="table-wrap"><table class="tbl-red"><thead><tr><th>Despacho</th><th>Tema</th><th>Data da solicitação</th><th>Prazo de entrega</th><th>Últ. atualização</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
@@ -1378,6 +1392,9 @@ function renderBriefingDetail(){
       '</div>'+
       '<hr class="sep">'+
       renderAtualizacoesTimeline('briefing', b.id)+
+      '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">'+
+        '<button class="btn btn-sm btn-ghost" data-action="toggle-encerrado-briefing" data-id="'+b.id+'">'+(b.encerrado?'Reabrir briefing/estudo':'Encerrar briefing/estudo')+'</button>'+
+      '</div>'+
     '</div>'
   );
 }
@@ -1530,7 +1547,7 @@ function renderRelatorio(){
   atrasados.forEach(function(m){ var p=getProjeto(m.projetoId); var k=p?(p.orgao||'—'):'—'; byOrgaoAtraso[k]=(byOrgaoAtraso[k]||0)+1; });
   var atrasoRows = Object.keys(byOrgaoAtraso).map(function(k){return {org:k, count:byOrgaoAtraso[k]};}).sort(function(a,b){return b.count-a.count;});
 
-  var revisarList = DB.projetos.filter(function(p){return p.revisarCadastro;});
+  var revisarList = DB.projetos.filter(precisaRevisao);
   var revisarHtml = revisarList.length ? '<div class="table-wrap" style="max-height:420px;overflow-y:auto"><table><thead><tr><th>Projeto</th><th>Órgão</th><th>Status atual</th><th></th></tr></thead><tbody>'+
     revisarList.map(function(p){ return '<tr><td class="strong">'+esc(p.nome)+'</td><td>'+esc(p.orgao||'—')+'</td><td>'+statusPill(p.status)+'</td>'+
       '<td class="right"><button class="btn btn-sm" data-action="open-projeto" data-id="'+p.id+'">Abrir</button></td></tr>'; }).join('')+'</tbody></table></div>'
@@ -1773,6 +1790,9 @@ function handleAction(action, el, e){
   } else if(action==='toggle-encerrado'){
     var p = getProjeto(id);
     mutate(function(){ updateProjeto(id, {encerrado: !p.encerrado}); });
+  } else if(action==='toggle-encerrado-briefing'){
+    var bEnc = getBriefing(id);
+    mutate(function(){ updateBriefing(id, {encerrado: !bEnc.encerrado}); });
   } else if(action==='del-atualizacao'){
     openModal('confirm', {message:'Remover esta atualização? Essa ação não pode ser desfeita.', kind:'atualizacao', id:id});
   } else if(action==='del-anexo'){
@@ -1846,6 +1866,7 @@ function handleChange(kind, el){
   else if(kind==='filtro-responsavel'){ UI.filtros.responsavel = el.value; paint(); }
   else if(kind==='filtro-status'){ UI.filtros.status = el.value; paint(); }
   else if(kind==='filtro-encerrados'){ UI.filtros.encerrados = el.checked; paint(); }
+  else if(kind==='filtro-encerrados-briefing'){ UI.filtros.encerradosBriefing = el.checked; paint(); }
   else if(kind==='atual-orgao-filtro'){
     var target = document.getElementById('atual-projeto-select');
     if(!target) return;
@@ -1884,7 +1905,11 @@ function handleChange(kind, el){
   }
   else if(kind==='status-change'){
     var pidStatus = el.dataset.id, novoStatus = el.value;
-    mutate(function(){ updateProjeto(pidStatus, {status: novoStatus}); });
+    var autorStatus = SB_SESSION ? SB_SESSION.email : null;
+    mutate(function(){
+      updateProjeto(pidStatus, {status: novoStatus});
+      addAtualizacao('projeto', pidStatus, 'Status alterado para: "'+novoStatus+'"', autorStatus, 'status');
+    });
     toast('Status atualizado.', 'ok');
   }
   else if(kind==='despacho-pauta'){
@@ -1921,8 +1946,8 @@ function handleFormSubmit(kind, form){
       if(anexoLink) addAnexo(alvoId, guessFileNameFromUrl(anexoLink), anexoLink, autor);
       if(encData && encTexto){
         var marcoTipo = encTipo==='orgao' ? 'encaminhamento-orgao' : 'encaminhamento-sat';
-        addMarco(alvoId, encTexto, encData, 'previsto', marcoTipo);
-        addAtualizacao(tipoAlvo, alvoId, encTexto, autor, marcoTipo);
+        var novoMarcoId = addMarco(alvoId, encTexto, encData, 'previsto', marcoTipo);
+        addAtualizacao(tipoAlvo, alvoId, encTexto, autor, marcoTipo, novoMarcoId);
       }
     });
     if(isGlobal) toast('Atualização registrada'+(anexoLink?' com anexo':'')+(encData&&encTexto?' e encaminhamento no calendário':'')+'.', 'ok');
