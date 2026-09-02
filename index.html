@@ -194,7 +194,8 @@ label .opt{ font-weight:400; color:var(--ink-muted); }
 .kpi.critical .num{ color:var(--critical); }
 .kpi.clickable{ cursor:pointer; }
 .kpi.clickable:hover{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
-.kpi-painel .kpi{ background:var(--surface-2); border-color:var(--border); }
+.kpi-painel .kpi{ background:var(--accent-soft); border-color:var(--border); }
+.kpi-ic{ font-size:20px; line-height:1; margin-bottom:2px; opacity:.75; }
 
 /* ---------- pills / status ---------- */
 .pill{
@@ -950,24 +951,25 @@ function renderHome(){
   }).join('');
 
   return (
-    '<p class="home-sub">Painel de visão geral e acesso rápido aos módulos do sistema.</p>'+
+    '<h2 class="home-section-title">Visão Geral</h2>'+
     '<div class="kpi-grid kpi-painel">'+
-      kpi(ativos.length,'Projetos ativos','','ativos','#000000')+
-      kpi(encerrados,'Encerrados / arquivados','','encerrados','#000000')+
-      kpi(atual30,'Atualizações (30 dias)','','atual30','#2E7D53')+
-      kpi(em7,'Entregas nos próx. 7 dias','','entregas7','#E07B27')+
-      kpi(atrasados,'Entregas em atraso','','atrasadas','#B23B3B')+
-      kpi(semAtualizacao60,'Sem atualização há +60 dias','','sem60','#6B6B6B')+
+      kpi(ativos.length,'Projetos ativos','','ativos','#000000','▤')+
+      kpi(encerrados,'Encerrados / arquivados','','encerrados','#000000','▢')+
+      kpi(atual30,'Atualizações (30 dias)','','atual30','#2E7D53','✎')+
+      kpi(em7,'Entregas nos próx. 7 dias','','entregas7','#E07B27','▲')+
+      kpi(atrasados,'Entregas em atraso','','atrasadas','#B23B3B','!')+
+      kpi(semAtualizacao60,'Sem atualização há +60 dias','','sem60','#6B6B6B','⏱')+
     '</div>'+
     '<h2 class="home-section-title">Acesso rápido</h2>'+
     '<div class="shortcut-grid">'+shortcutsHtml+'</div>'
   );
 }
-function kpi(num, label, tone, kind, numColor){
+function kpi(num, label, tone, kind, numColor, ic){
   var clickable = !!kind;
   return '<div class="kpi'+(tone?' '+tone:'')+(clickable?' clickable':'')+'"'+
     (clickable?' data-action="kpi-drill" data-kind="'+kind+'"':'')+
-    '><div class="num tnum"'+(numColor?' style="color:'+numColor+'"':'')+'>'+num+'</div><div class="lbl">'+esc(label)+'</div></div>';
+    '>'+(ic?'<div class="kpi-ic">'+ic+'</div>':'')+
+    '<div class="num tnum"'+(numColor?' style="color:'+numColor+'"':'')+'>'+num+'</div><div class="lbl">'+esc(label)+'</div></div>';
 }
 var KPI_TITLES = {
   ativos:'Projetos ativos', encerrados:'Projetos encerrados / arquivados',
