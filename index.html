@@ -195,7 +195,6 @@ label .opt{ font-weight:400; color:var(--ink-muted); }
 .kpi.clickable{ cursor:pointer; }
 .kpi.clickable:hover{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
 .kpi-painel .kpi{ background:var(--accent-soft); border-color:var(--border); }
-.kpi-ic{ font-size:20px; line-height:1; margin-bottom:2px; opacity:.75; }
 
 /* ---------- pills / status ---------- */
 .pill{
@@ -364,6 +363,7 @@ hr.sep{ border:none; border-top:1px solid var(--border); margin:16px 0; }
 /* ---------- home ---------- */
 .home-sub{ color:var(--ink-muted); font-size:16.5px; margin-bottom:20px; }
 .home-section-title{ font-family:var(--font-display); font-size:20px; font-weight:600; color:var(--accent); margin:28px 0 14px; }
+.hist-title{ font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--sidebar-bg); margin:0 0 14px; }
 .shortcut-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; }
 .shortcut-card{
   display:flex; flex-direction:column; align-items:flex-start; gap:8px; text-align:left;
@@ -530,7 +530,7 @@ var DB = null;
 var UI = { view:'home', selectedProjetoId:null, selectedBriefingId:null, projetoTab:'geral', modal:null,
            filtros:{ q:'', orgao:'', responsavel:'', status:'', encerrados:false, encerradosBriefing:false },
            calMonth: (new Date()).getFullYear()+'-'+((new Date()).getMonth()+1),
-           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{},
+           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{}, atualEditId:null,
            projetoExpandidoId:null, briefingExpandidoId:null, briefingFiltroQ:'', atualTipoAlvo:'projeto' };
 
 /* ---------------------------------------------------------------- utils */
@@ -953,23 +953,22 @@ function renderHome(){
   return (
     '<h2 class="home-section-title">Visão Geral</h2>'+
     '<div class="kpi-grid kpi-painel">'+
-      kpi(ativos.length,'Projetos ativos','','ativos','#000000','▤')+
-      kpi(encerrados,'Encerrados / arquivados','','encerrados','#000000','▢')+
-      kpi(atual30,'Atualizações (30 dias)','','atual30','#2E7D53','✎')+
-      kpi(em7,'Entregas nos próx. 7 dias','','entregas7','#E07B27','▲')+
-      kpi(atrasados,'Entregas em atraso','','atrasadas','#B23B3B','!')+
-      kpi(semAtualizacao60,'Sem atualização há +60 dias','','sem60','#6B6B6B','⏱')+
+      kpi(ativos.length,'Projetos ativos','','ativos','#000000')+
+      kpi(atual30,'Atualizações (30 dias)','','atual30','#2E7D53')+
+      kpi(em7,'Entregas nos próx. 7 dias','','entregas7','#E07B27')+
+      kpi(atrasados,'Entregas em atraso','','atrasadas','#B23B3B')+
+      kpi(semAtualizacao60,'Sem atualização há +60 dias','','sem60','#6B6B6B')+
+      kpi(encerrados,'Encerrados / arquivados','','encerrados','#8A8A8A')+
     '</div>'+
     '<h2 class="home-section-title">Acesso rápido</h2>'+
     '<div class="shortcut-grid">'+shortcutsHtml+'</div>'
   );
 }
-function kpi(num, label, tone, kind, numColor, ic){
+function kpi(num, label, tone, kind, numColor){
   var clickable = !!kind;
   return '<div class="kpi'+(tone?' '+tone:'')+(clickable?' clickable':'')+'"'+
     (clickable?' data-action="kpi-drill" data-kind="'+kind+'"':'')+
-    '>'+(ic?'<div class="kpi-ic">'+ic+'</div>':'')+
-    '<div class="num tnum"'+(numColor?' style="color:'+numColor+'"':'')+'>'+num+'</div><div class="lbl">'+esc(label)+'</div></div>';
+    '><div class="num tnum"'+(numColor?' style="color:'+numColor+'"':'')+'>'+num+'</div><div class="lbl">'+esc(label)+'</div></div>';
 }
 var KPI_TITLES = {
   ativos:'Projetos ativos', encerrados:'Projetos encerrados / arquivados',
@@ -1060,7 +1059,7 @@ function renderProjetos(){
           '<div class="tl-author tl-author-line">'+esc(ultima.autor||'—')+'</div>'+
           '<div class="tl-text">'+mdLite(ultima.texto)+'</div></div></div>'
           : '<div class="empty-state small" style="margin-bottom:14px">Nenhuma atualização registrada ainda.</div>')+
-        '<button class="btn btn-ghost" data-action="open-projeto" data-id="'+p.id+'">Ver dados de cadastro</button>'+
+        '<button class="btn btn-ghost" data-action="open-projeto" data-id="'+p.id+'">⤢ Abrir projeto</button>'+
       '</div></td></tr>';
     }
     return row;
@@ -1245,28 +1244,46 @@ function renderTabGeral(p){
   '</div>';
 }
 function renderTabAtualizacoes(p){
-  return renderAtualizacoesTimeline('projeto', p.id);
+  return '<h3 class="hist-title">Histórico do Projeto</h3>'+renderAtualizacoesTimeline('projeto', p.id, {mostrarForm:false, editable:true});
 }
-function renderAtualizacoesTimeline(tipo, id){
+function renderAtualizacoesTimeline(tipo, id, opts){
+  opts = opts || {};
+  var mostrarForm = opts.mostrarForm !== false;
+  var editable = !!opts.editable;
   var list = atualizacoesOf(id);
   var placeholder = tipo==='briefing' ? 'O que aconteceu neste briefing/estudo?' : 'O que aconteceu neste projeto?';
   var vazio = tipo==='briefing' ? 'Nenhuma atualização registrada para este briefing/estudo.' : 'Nenhuma atualização registrada para este projeto.';
   var items = list.length ? list.map(function(a){
-    return '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
-      '<div class="tl-meta"><span class="tl-author">'+esc(a.autor||'—')+'</span>·<span>'+fmtDateTime(a.data)+'</span>'+
-      (a.origem==='encaminhamento'?'<span class="tag" title="Registrado a partir do Despacho">encaminhamento</span>':
+    var editando = editable && UI.atualEditId===a.id;
+    var tagHtml = (a.origem==='encaminhamento'?'<span class="tag" title="Registrado a partir do Despacho">encaminhamento</span>':
         a.origem==='encaminhamento-sat'?'<span class="tag tag-sat" title="Encaminhamento para o Calendário">Encaminhamento SAT</span>':
         a.origem==='encaminhamento-orgao'?'<span class="tag tag-orgao" title="Encaminhamento para o Calendário">Encaminhamento Órgão</span>':
         a.origem==='status'?'<span class="tag" title="Alteração de status">status</span>':
-        (a.origem&&a.origem!=='manual'?'<span class="tl-origin">'+(a.origem==='comment'?'migrado · comentário':'migrado · descrição')+'</span>':''))+
-      '<span class="spacer"></span><button class="icon-btn" title="Remover" data-action="del-atualizacao" data-id="'+a.id+'">✕</button></div>'+
-      '<div class="tl-text">'+mdLite(a.texto)+'</div></div></div>';
+        (a.origem&&a.origem!=='manual'?'<span class="tl-origin">'+(a.origem==='comment'?'migrado · comentário':'migrado · descrição')+'</span>':''));
+    var corpo;
+    if(editando){
+      corpo = '<div class="field"><textarea class="textarea" data-atual-edit="'+a.id+'">'+esc(a.texto)+'</textarea></div>'+
+        '<div class="flex gap8" style="margin-top:6px">'+
+          '<button class="btn btn-sm btn-primary" data-action="atual-edit-save" data-id="'+a.id+'">Salvar</button>'+
+          '<button class="btn btn-sm btn-ghost" data-action="atual-edit-cancel" data-id="'+a.id+'">Cancelar</button>'+
+        '</div>';
+    } else {
+      corpo = '<div class="tl-text">'+mdLite(a.texto)+'</div>';
+    }
+    return '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
+      '<div class="tl-meta"><span class="tl-author">'+esc(a.autor||'—')+'</span>·<span>'+fmtDateTime(a.data)+'</span>'+tagHtml+
+      '<span class="spacer"></span>'+
+      (editable&&!editando?'<button class="icon-btn" title="Editar" data-action="atual-edit-toggle" data-id="'+a.id+'">✎</button>':'')+
+      '<button class="icon-btn" title="Remover" data-action="del-atualizacao" data-id="'+a.id+'">✕</button></div>'+
+      corpo+'</div></div>';
   }).join('') : '<div class="empty-state small">'+vazio+'</div>';
-  return '<form data-form="nova-atualizacao" data-projeto="'+id+'" data-tipo="'+tipo+'">'+
+  var formHtml = mostrarForm ?
+    '<form data-form="nova-atualizacao" data-projeto="'+id+'" data-tipo="'+tipo+'">'+
       '<div class="field"><label>Nova atualização</label><textarea class="textarea" name="texto" placeholder="'+esc(placeholder)+'" required data-autofocus></textarea></div>'+
       '<div class="field-row"><div class="field" style="max-width:260px"><label>Autor</label>'+autorSelect()+'</div>'+
         '<div class="field" style="align-self:flex-end"><button class="btn btn-primary" type="submit">Registrar</button></div></div>'+
-    '</form><hr class="sep"><div class="timeline">'+items+'</div>';
+    '</form><hr class="sep">' : '';
+  return formHtml+'<div class="timeline">'+items+'</div>';
 }
 function autorSelect(){
   var last = getLastAutor();
@@ -1798,6 +1815,19 @@ function handleAction(action, el, e){
     mutate(function(){ updateBriefing(id, {encerrado: !bEnc.encerrado}); });
   } else if(action==='del-atualizacao'){
     openModal('confirm', {message:'Remover esta atualização? Essa ação não pode ser desfeita.', kind:'atualizacao', id:id});
+  } else if(action==='atual-edit-toggle'){
+    UI.atualEditId = id; paint();
+  } else if(action==='atual-edit-cancel'){
+    UI.atualEditId = null; paint();
+  } else if(action==='atual-edit-save'){
+    var taAtual = document.querySelector('[data-atual-edit="'+id+'"]');
+    var novoTextoAtual = taAtual ? taAtual.value.trim() : '';
+    if(!novoTextoAtual) return;
+    mutate(function(){
+      updateAtualizacao(id, {texto: novoTextoAtual});
+      UI.atualEditId = null;
+    });
+    toast('Atualização editada.', 'ok');
   } else if(action==='del-anexo'){
     openModal('confirm', {message:'Remover este anexo?', kind:'anexo', id:id});
   } else if(action==='del-marco'){
