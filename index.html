@@ -369,6 +369,11 @@ hr.sep{ border:none; border-top:1px solid var(--border); margin:16px 0; }
   background:var(--accent-soft); margin:0 -22px 16px; padding:14px 22px;
   border-radius:var(--radius-l) var(--radius-l) 0 0; align-items:center;
 }
+.enc-bullets-wrap{ margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+.enc-bullets-title{ font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-muted); margin-bottom:8px; }
+.enc-bullets{ margin:0; padding-left:20px; display:flex; flex-direction:column; gap:8px; }
+.enc-bullets li{ font-size:14.5px; line-height:1.45; }
+.enc-bullet-date{ font-weight:600; color:var(--sidebar-bg); margin-right:4px; }
 .shortcut-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; }
 .shortcut-card{
   display:flex; flex-direction:column; align-items:flex-start; gap:8px; text-align:left;
@@ -542,6 +547,14 @@ var UI = { view:'home', selectedProjetoId:null, selectedBriefingId:null, projeto
 function esc(s){ return (s===undefined||s===null?'':String(s)).replace(/[&<>"']/g, function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function mdLite(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>'); }
+function origemTagHtml(origem){
+  if(origem==='encaminhamento') return '<span class="tag" title="Registrado a partir do Despacho">encaminhamento</span>';
+  if(origem==='encaminhamento-sat') return '<span class="tag tag-sat" title="Encaminhamento para o Calendário">Encaminhamento SAT</span>';
+  if(origem==='encaminhamento-orgao') return '<span class="tag tag-orgao" title="Encaminhamento para o Calendário">Encaminhamento Órgão</span>';
+  if(origem==='status') return '<span class="tag" title="Alteração de status">status</span>';
+  if(origem && origem!=='manual') return '<span class="tl-origin">'+(origem==='comment'?'migrado · comentário':'migrado · descrição')+'</span>';
+  return '';
+}
 function uid(prefix){ return prefix+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
 function fmtDate(iso){ if(!iso) return '—'; var d=new Date(iso); if(isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
@@ -1081,13 +1094,7 @@ function renderProjetos(){
 function renderDespacho(){
   var contagem = despachoCount()>0 ? ' ('+despachoCount()+')' : '';
   var contagemB = despachoBriefingCount()>0 ? ' ('+despachoBriefingCount()+')' : '';
-  var anchors = '<div class="despacho-jump">'+
-    '<a href="#desp-projetos" class="btn btn-sm btn-ghost">Projetos selecionados'+contagem+'</a>'+
-    '<a href="#desp-briefings" class="btn btn-sm btn-ghost">Briefings selecionados'+contagemB+'</a>'+
-    '<a href="#desp-calendario" class="btn btn-sm btn-ghost">Calendário</a>'+
-    '<a href="#desp-pautas" class="btn btn-sm btn-ghost">Outras Pautas</a>'+
-  '</div>';
-  return anchors+
+  return (
     '<h2 id="desp-projetos" class="despacho-section-title">Projetos selecionados'+contagem+'</h2>'+
     renderDespachoProjetos()+
     '<h2 id="desp-briefings" class="despacho-section-title">Briefings selecionados'+contagemB+'</h2>'+
@@ -1095,7 +1102,8 @@ function renderDespacho(){
     '<h2 id="desp-calendario" class="despacho-section-title">Calendário</h2>'+
     renderCalendario()+
     '<h2 id="desp-pautas" class="despacho-section-title">Outras Pautas</h2>'+
-    renderDespachoPautas();
+    renderDespachoPautas()
+  );
 }
 function renderDespachoProjetos(){
   var ids = DB.despachoSelecionados;
@@ -1122,6 +1130,16 @@ function ultimaAtualizacaoDoBriefing(id){
     .sort(function(a,b){ return new Date(b.data)-new Date(a.data); });
   return list[0] || null;
 }
+function renderEncaminhamentosBullets(tipo, id){
+  var lista = DB.atualizacoes.filter(function(a){
+    return (a.alvoTipo||'projeto')===tipo && a.projetoId===id && a.origem==='encaminhamento';
+  }).sort(function(a,b){ return new Date(b.data)-new Date(a.data); });
+  if(!lista.length) return '';
+  var itens = lista.map(function(a){
+    return '<li><span class="enc-bullet-date">'+fmtDate(a.data)+'</span> '+origemTagHtml(a.origem)+' '+mdLite(a.texto)+'</li>';
+  }).join('');
+  return '<div class="enc-bullets-wrap"><div class="enc-bullets-title">Encaminhamentos registrados</div><ul class="enc-bullets">'+itens+'</ul></div>';
+}
 function renderDespachoBriefings(){
   var ids = DB.despachoBriefingsSelecionados;
   if(!ids.length){
@@ -1145,7 +1163,7 @@ function renderDespachoBriefingCard(b){
       '</div>';
   } else if(ultima){
     ultimaHtml = '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
-      '<div class="tl-meta">'+fmtDateTime(ultima.data)+
+      '<div class="tl-meta">'+fmtDateTime(ultima.data)+origemTagHtml(ultima.origem)+
         '<span class="spacer"></span><button class="icon-btn" title="Editar texto" data-action="despacho-atual-edit" data-id="'+b.id+'">✎</button></div>'+
       '<div class="tl-text">'+mdLite(ultima.texto)+'</div></div></div>';
   } else {
@@ -1163,6 +1181,7 @@ function renderDespachoBriefingCard(b){
       '<button class="icon-btn" title="Remover do despacho" data-action="despacho-remove-briefing" data-id="'+b.id+'">✕</button>'+
     '</div>'+
     ultimaHtml+
+    renderEncaminhamentosBullets('briefing', b.id)+
     '<div style="margin-top:10px;text-align:center">'+
       '<button class="round-icon-btn" title="'+(encAberto?'Fechar encaminhamento':'Adicionar encaminhamento')+'" data-action="despacho-enc-toggle" data-id="'+b.id+'">'+(encAberto?'–':'+')+'</button>'+
     '</div>'+
@@ -1182,7 +1201,7 @@ function renderDespachoCard(p){
       '</div>';
   } else if(ultima){
     ultimaHtml = '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
-      '<div class="tl-meta">'+fmtDateTime(ultima.data)+
+      '<div class="tl-meta">'+fmtDateTime(ultima.data)+origemTagHtml(ultima.origem)+
         '<span class="spacer"></span><button class="icon-btn" title="Editar texto" data-action="despacho-atual-edit" data-id="'+p.id+'">✎</button></div>'+
       '<div class="tl-text">'+mdLite(ultima.texto)+'</div></div></div>';
   } else {
@@ -1200,6 +1219,7 @@ function renderDespachoCard(p){
       '<button class="icon-btn" title="Remover do despacho" data-action="despacho-remove" data-id="'+p.id+'">✕</button>'+
     '</div>'+
     ultimaHtml+
+    renderEncaminhamentosBullets('projeto', p.id)+
     '<div style="margin-top:10px;text-align:center">'+
       '<button class="round-icon-btn" title="'+(encAberto?'Fechar encaminhamento':'Adicionar encaminhamento')+'" data-action="despacho-enc-toggle" data-id="'+p.id+'">'+(encAberto?'–':'+')+'</button>'+
     '</div>'+
@@ -1260,11 +1280,7 @@ function renderAtualizacoesTimeline(tipo, id, opts){
   var vazio = tipo==='briefing' ? 'Nenhuma atualização registrada para este briefing/estudo.' : 'Nenhuma atualização registrada para este projeto.';
   var items = list.length ? list.map(function(a){
     var editando = editable && UI.atualEditId===a.id;
-    var tagHtml = (a.origem==='encaminhamento'?'<span class="tag" title="Registrado a partir do Despacho">encaminhamento</span>':
-        a.origem==='encaminhamento-sat'?'<span class="tag tag-sat" title="Encaminhamento para o Calendário">Encaminhamento SAT</span>':
-        a.origem==='encaminhamento-orgao'?'<span class="tag tag-orgao" title="Encaminhamento para o Calendário">Encaminhamento Órgão</span>':
-        a.origem==='status'?'<span class="tag" title="Alteração de status">status</span>':
-        (a.origem&&a.origem!=='manual'?'<span class="tl-origin">'+(a.origem==='comment'?'migrado · comentário':'migrado · descrição')+'</span>':''));
+    var tagHtml = origemTagHtml(a.origem);
     var corpo;
     if(editando){
       corpo = '<div class="field"><textarea class="textarea" data-atual-edit="'+a.id+'">'+esc(a.texto)+'</textarea></div>'+
@@ -1438,7 +1454,7 @@ function renderUltimosRegistros(tipo, alvoId){
     var nome = tipo==='briefing' ? (alvo?alvo.tema:'(removido)') : (alvo?alvo.nome:'(projeto removido)');
     var acao = tipo==='briefing' ? 'open-briefing' : 'open-projeto';
     return '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
-      '<div class="tl-meta"><button class="link-btn" data-action="'+acao+'" data-id="'+esc(alvo?alvo.id:'')+'">'+esc(nome)+'</button>·<span>'+fmtDateTime(a.data)+'</span></div>'+
+      '<div class="tl-meta"><button class="link-btn" data-action="'+acao+'" data-id="'+esc(alvo?alvo.id:'')+'">'+esc(nome)+'</button>·<span>'+fmtDateTime(a.data)+'</span>'+origemTagHtml(a.origem)+'</div>'+
       '<div class="tl-author tl-author-line">'+esc(a.autor||'—')+'</div>'+
       '<div class="tl-text">'+mdLite(a.texto)+'</div></div></div>';
   }).join('');
@@ -1535,7 +1551,7 @@ function renderCalendario(){
     var listaMarcos = marcosDoProjeto.map(function(mk){ return esc(mk.descricao)+' (venceu '+fmtDate(mk.dataPrevista)+')'; }).join(' · ');
     return '<div class="tl-item" style="margin-bottom:14px"><div class="tl-dot" style="background:var(--critical)"></div><div class="tl-body">'+
       '<div class="tl-meta"><button class="link-btn" data-action="open-projeto" data-id="'+esc(p.id)+'">'+esc(p.nome)+'</button>'+
-      (ultima?'·<span>'+fmtDateTime(ultima.data)+'</span>':'')+'</div>'+
+      (ultima?'·<span>'+fmtDateTime(ultima.data)+'</span>'+origemTagHtml(ultima.origem):'')+'</div>'+
       (ultima?'<div class="tl-author tl-author-line">'+esc(ultima.autor||'—')+'</div>':'')+
       '<div class="tl-text">'+(ultima?mdLite(ultima.texto):'<span class="muted">Nenhuma atualização registrada para este projeto.</span>')+'</div>'+
       '<div class="small muted" style="margin-top:6px">Entrega(s) atrasada(s): '+listaMarcos+'</div>'+
