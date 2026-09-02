@@ -364,6 +364,7 @@ hr.sep{ border:none; border-top:1px solid var(--border); margin:16px 0; }
 .home-sub{ color:var(--ink-muted); font-size:16.5px; margin-bottom:20px; }
 .home-section-title{ font-family:var(--font-display); font-size:20px; font-weight:600; color:var(--accent); margin:28px 0 14px; }
 .hist-title{ font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--sidebar-bg); margin:0 0 14px; }
+.mini-title{ display:block; font-size:16.5px; font-weight:600; color:var(--sidebar-bg); margin-bottom:4px; }
 .shortcut-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; }
 .shortcut-card{
   display:flex; flex-direction:column; align-items:flex-start; gap:8px; text-align:left;
@@ -1281,7 +1282,7 @@ function renderAtualizacoesTimeline(tipo, id, opts){
     '<form data-form="nova-atualizacao" data-projeto="'+id+'" data-tipo="'+tipo+'">'+
       '<div class="field"><label>Nova atualização</label><textarea class="textarea" name="texto" placeholder="'+esc(placeholder)+'" required data-autofocus></textarea></div>'+
       '<div class="field-row"><div class="field" style="max-width:260px"><label>Autor</label>'+autorSelect()+'</div>'+
-        '<div class="field" style="align-self:flex-end"><button class="btn btn-primary" type="submit">Registrar</button></div></div>'+
+        '<div class="field" style="align-self:flex-end;align-items:flex-start"><button class="btn btn-primary" type="submit">Registrar</button></div></div>'+
     '</form><hr class="sep">' : '';
   return formHtml+'<div class="timeline">'+items+'</div>';
 }
@@ -1402,12 +1403,15 @@ function renderBriefingDetail(){
   if(!b) return '<div class="empty-state">Briefing/estudo não encontrado. <button class="link-btn" data-action="nav" data-view="briefings">Voltar à lista</button></div>';
   return (
     '<div class="card">'+
-      '<div class="flex gap12" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:6px">'+
-        '<span class="muted small">Solicitado em '+fmtDate(b.dataSolicitacao)+' · prazo de entrega: '+fmtDate(b.prazoEntrega)+'</span>'+
+      '<div class="flex gap12" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:16px">'+
+        '<div class="flex gap12" style="flex-wrap:wrap;gap:28px">'+
+          '<div><span class="mini-title">↓ Data de solicitação</span><p style="margin:0">'+fmtDate(b.dataSolicitacao)+'</p></div>'+
+          '<div><span class="mini-title">↑ Prazo de entrega</span><p style="margin:0">'+fmtDate(b.prazoEntrega)+'</p></div>'+
+        '</div>'+
         '<button class="btn btn-sm" data-action="edit-briefing" data-id="'+b.id+'">Editar cadastro</button>'+
       '</div>'+
       '<div class="grid-2" style="margin-bottom:16px">'+
-        '<div><label>Detalhamento e orientações</label><p style="margin-top:6px">'+(b.detalhamento? mdLite(b.detalhamento):'<span class="muted">Não preenchido.</span>')+'</p></div>'+
+        '<div><span class="mini-title">Detalhamento e orientações</span><p style="margin-top:6px">'+(b.detalhamento? mdLite(b.detalhamento):'<span class="muted">Não preenchido.</span>')+'</p></div>'+
         '<div><label>Anexo</label><p style="margin-top:6px">'+(b.anexoLink?'<a href="'+esc(b.anexoLink)+'" target="_blank" rel="noopener">abrir link ↗</a>':'<span class="muted">—</span>')+'</p></div>'+
       '</div>'+
       '<hr class="sep">'+
