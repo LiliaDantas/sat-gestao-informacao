@@ -14,11 +14,11 @@
    =================================================================== */
 
 :root{
-  --bg:#F4F5F0;
+  --bg:#E6F6F6;
   --surface:#FFFFFF;
-  --surface-2:#EAEDE4;
-  --surface-3:#DEE2D5;
-  --border:#D7DBCD;
+  --surface-2:#D1EEEE;
+  --surface-3:#C4E0E0;
+  --border:#B4CDCD;
   --border-strong:#C2C8B7;
   --ink:#16231F;
   --ink-2:#45524B;
@@ -34,12 +34,12 @@
   --info:#3B6FA0;      --info-soft:#DCE8F2;      --info-ink:#274B6B;
   --neutral:#66716A;   --neutral-soft:#E7E9E1;   --neutral-ink:#454E48;
   --sidebar-bg:#8B0000; --sidebar-ink:#FAEEF0;
-  --sat:#2F9BD6;    --sat-soft:#DCF0FA;    --sat-ink:#1B5E82;
-  --orgao:#009B3A;  --orgao-soft:#DAF3E3;  --orgao-ink:#00722B;
+  --sat:#0093DD;    --sat-soft:#D6EEFA;    --sat-ink:#00618F;
+  --orgao:#00923F;  --orgao-soft:#D9F2E3;  --orgao-ink:#006E2F;
   --shadow: 0 1px 2px rgba(20,30,25,.06), 0 1px 1px rgba(20,30,25,.04);
   --radius-s:6px; --radius-m:10px; --radius-l:16px;
-  --font-display:"Source Serif 4", Georgia, "Times New Roman", serif;
-  --font-body:"Public Sans","Segoe UI",Helvetica,Arial,sans-serif;
+  --font-display:"Calibri","Lato","Segoe UI","Trebuchet MS",Arial,sans-serif;
+  --font-body:"Calibri","Segoe UI","Trebuchet MS",Arial,sans-serif;
   --font-mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
 }
 
@@ -93,7 +93,7 @@ body{
   font-family:var(--font-body); font-size:14.5px; line-height:1.5;
   -webkit-font-smoothing:antialiased;
 }
-h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; margin:0; color:var(--sidebar-bg); text-wrap:balance; }
+h1,h2,h3,h4{ font-family:var(--font-display); font-weight:700; margin:0; color:var(--sidebar-bg); text-wrap:balance; }
 p{ margin:0 0 .6em; }
 a{ color:var(--accent); }
 ::selection{ background:var(--accent-soft); }
@@ -134,9 +134,9 @@ button{ font-family:inherit; }
 .main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
 .topbar{
   display:flex; align-items:center; justify-content:space-between; gap:16px;
-  padding:16px 28px; border-bottom:1px solid var(--border); background:var(--surface); position:sticky; top:0; z-index:5;
+  padding:16px 28px; border-bottom:2px solid var(--sidebar-bg); background:var(--surface-2); position:sticky; top:0; z-index:5;
 }
-.topbar h1{ font-size:20px; }
+.topbar h1{ font-size:25px; }
 .topbar .crumb{ font-size:12.5px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:2px; }
 .view{ padding:24px 28px 64px; max-width:1240px; width:100%; margin:0 auto; }
 .topbar-actions{ display:flex; align-items:center; gap:10px; }
