@@ -370,10 +370,10 @@ hr.sep{ border:none; border-top:1px solid var(--border); margin:16px 0; }
   border-radius:var(--radius-l) var(--radius-l) 0 0; align-items:center;
 }
 .enc-bullets-wrap{ margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
-.enc-bullets-title{ font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-muted); margin-bottom:8px; }
+.enc-bullets-title{ font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--sidebar-bg); margin-bottom:8px; }
 .enc-bullets{ margin:0; padding-left:20px; display:flex; flex-direction:column; gap:8px; }
 .enc-bullets li{ font-size:14.5px; line-height:1.45; }
-.enc-bullet-date{ font-weight:600; color:var(--sidebar-bg); margin-right:4px; }
+.enc-bullet-date{ font-weight:600; color:var(--ink); margin-right:4px; }
 .shortcut-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; }
 .shortcut-card{
   display:flex; flex-direction:column; align-items:flex-start; gap:8px; text-align:left;
@@ -1136,7 +1136,7 @@ function renderEncaminhamentosBullets(tipo, id){
   }).sort(function(a,b){ return new Date(b.data)-new Date(a.data); });
   if(!lista.length) return '';
   var itens = lista.map(function(a){
-    return '<li><span class="enc-bullet-date">'+fmtDate(a.data)+'</span> '+origemTagHtml(a.origem)+' '+mdLite(a.texto)+'</li>';
+    return '<li><span class="enc-bullet-date">'+fmtDate(a.data)+'</span> '+mdLite(a.texto)+'</li>';
   }).join('');
   return '<div class="enc-bullets-wrap"><div class="enc-bullets-title">Encaminhamentos registrados</div><ul class="enc-bullets">'+itens+'</ul></div>';
 }
@@ -1163,7 +1163,7 @@ function renderDespachoBriefingCard(b){
       '</div>';
   } else if(ultima){
     ultimaHtml = '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
-      '<div class="tl-meta">'+fmtDateTime(ultima.data)+origemTagHtml(ultima.origem)+
+      '<div class="tl-meta">'+fmtDateTime(ultima.data)+
         '<span class="spacer"></span><button class="icon-btn" title="Editar texto" data-action="despacho-atual-edit" data-id="'+b.id+'">✎</button></div>'+
       '<div class="tl-text">'+mdLite(ultima.texto)+'</div></div></div>';
   } else {
@@ -1201,7 +1201,7 @@ function renderDespachoCard(p){
       '</div>';
   } else if(ultima){
     ultimaHtml = '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
-      '<div class="tl-meta">'+fmtDateTime(ultima.data)+origemTagHtml(ultima.origem)+
+      '<div class="tl-meta">'+fmtDateTime(ultima.data)+
         '<span class="spacer"></span><button class="icon-btn" title="Editar texto" data-action="despacho-atual-edit" data-id="'+p.id+'">✎</button></div>'+
       '<div class="tl-text">'+mdLite(ultima.texto)+'</div></div></div>';
   } else {
@@ -1551,7 +1551,7 @@ function renderCalendario(){
     var listaMarcos = marcosDoProjeto.map(function(mk){ return esc(mk.descricao)+' (venceu '+fmtDate(mk.dataPrevista)+')'; }).join(' · ');
     return '<div class="tl-item" style="margin-bottom:14px"><div class="tl-dot" style="background:var(--critical)"></div><div class="tl-body">'+
       '<div class="tl-meta"><button class="link-btn" data-action="open-projeto" data-id="'+esc(p.id)+'">'+esc(p.nome)+'</button>'+
-      (ultima?'·<span>'+fmtDateTime(ultima.data)+'</span>'+origemTagHtml(ultima.origem):'')+'</div>'+
+      (ultima?'·<span>'+fmtDateTime(ultima.data)+'</span>':'')+'</div>'+
       (ultima?'<div class="tl-author tl-author-line">'+esc(ultima.autor||'—')+'</div>':'')+
       '<div class="tl-text">'+(ultima?mdLite(ultima.texto):'<span class="muted">Nenhuma atualização registrada para este projeto.</span>')+'</div>'+
       '<div class="small muted" style="margin-top:6px">Entrega(s) atrasada(s): '+listaMarcos+'</div>'+
