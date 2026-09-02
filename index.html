@@ -696,11 +696,13 @@ function addAtualizacao(alvoTipo, alvoId, texto, autor, origem, marcoId){
   var id = uid('at');
   var a = {id:id, alvoTipo:alvoTipo||'projeto', projetoId:alvoId, texto:texto, autor:autor||null, data:nowIso(), origem:origem||'manual', marcoId:marcoId||null};
   DB.atualizacoes.push(a);
-  var alvo = (alvoTipo==='briefing') ? getBriefing(alvoId) : getProjeto(alvoId);
-  if(alvo){
-    alvo.dataUltimaAtualizacao = nowIso();
-    sbUpdate(alvoTipo==='briefing'?'briefings':'projetos', alvoId, alvoTipo==='briefing'?briefingToRow(alvo):projetoToRow(alvo))
-      .catch(function(){});
+  if(origem!=='encaminhamento'){
+    var alvo = (alvoTipo==='briefing') ? getBriefing(alvoId) : getProjeto(alvoId);
+    if(alvo){
+      alvo.dataUltimaAtualizacao = nowIso();
+      sbUpdate(alvoTipo==='briefing'?'briefings':'projetos', alvoId, alvoTipo==='briefing'?briefingToRow(alvo):projetoToRow(alvo))
+        .catch(function(){});
+    }
   }
   sbInsert('atualizacoes', atualizacaoToRow(a)).catch(sbFail('Não foi possível salvar a atualização'));
   return id;
@@ -1121,12 +1123,12 @@ function renderDespachoPautas(){
     '<textarea class="textarea" style="min-height:280px" data-onchange="despacho-pauta" placeholder="Escreva aqui outros assuntos a tratar no despacho…">'+esc(DB.despachoPauta||'')+'</textarea></div>';
 }
 function ultimaAtualizacaoDoProjeto(id){
-  var list = DB.atualizacoes.filter(function(a){ return (a.alvoTipo||'projeto')==='projeto' && a.projetoId===id; })
+  var list = DB.atualizacoes.filter(function(a){ return (a.alvoTipo||'projeto')==='projeto' && a.projetoId===id && a.origem!=='encaminhamento'; })
     .sort(function(a,b){ return new Date(b.data)-new Date(a.data); });
   return list[0] || null;
 }
 function ultimaAtualizacaoDoBriefing(id){
-  var list = DB.atualizacoes.filter(function(a){ return a.alvoTipo==='briefing' && a.projetoId===id; })
+  var list = DB.atualizacoes.filter(function(a){ return a.alvoTipo==='briefing' && a.projetoId===id && a.origem!=='encaminhamento'; })
     .sort(function(a,b){ return new Date(b.data)-new Date(a.data); });
   return list[0] || null;
 }
