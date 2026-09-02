@@ -178,6 +178,7 @@ label .opt{ font-weight:400; color:var(--ink-muted); }
 .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-l); padding:20px 22px; }
 .card + .card{ margin-top:16px; }
 .section-title{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.section-title-underline{ padding-bottom:8px; border-bottom:2px solid var(--sidebar-bg); margin-bottom:16px; }
 .section-title h2{ font-size:19px; }
 .section-title .desc{ font-size:14.5px; color:var(--ink-muted); }
 .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
@@ -1456,8 +1457,8 @@ function renderUltimosRegistros(tipo, alvoId){
     var nome = tipo==='briefing' ? (alvo?alvo.tema:'(removido)') : (alvo?alvo.nome:'(projeto removido)');
     var acao = tipo==='briefing' ? 'open-briefing' : 'open-projeto';
     return '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
-      '<div class="tl-meta"><button class="link-btn" data-action="'+acao+'" data-id="'+esc(alvo?alvo.id:'')+'">'+esc(nome)+'</button>·<span>'+fmtDateTime(a.data)+'</span>'+origemTagHtml(a.origem)+'</div>'+
-      '<div class="tl-author tl-author-line">'+esc(a.autor||'—')+'</div>'+
+      '<div class="tl-meta">'+origemTagHtml(a.origem)+'</div>'+
+      '<div class="tl-meta" style="margin-top:2px"><button class="link-btn" data-action="'+acao+'" data-id="'+esc(alvo?alvo.id:'')+'">'+esc(nome)+'</button><span>·</span><span>'+fmtDateTime(a.data)+'</span><span>·</span><span>'+esc(a.autor||'—')+'</span></div>'+
       '<div class="tl-text">'+mdLite(a.texto)+'</div></div></div>';
   }).join('');
 }
@@ -1510,9 +1511,9 @@ function renderAtualizacoesView(){
   }
   var feed = renderUltimosRegistros(tipo, selectedId);
   return '<div class="card">'+
-    '<div class="section-title"><h2>Registrar atualização</h2><span class="desc">Cada registro fica salvo no histórico do item.</span></div>'+
+    '<div class="section-title section-title-underline"><h2>Registrar atualização</h2><span class="desc">Cada registro fica salvo no histórico do item.</span></div>'+
     toggleHtml+formHtml+'</div>'+
-    '<div class="card"><div class="section-title"><h2>Últimos registros</h2></div><div class="timeline" id="ultimos-registros-wrap">'+
+    '<div class="card"><div class="section-title section-title-underline"><h2>Últimos registros</h2></div><div class="timeline" id="ultimos-registros-wrap">'+
     feed+'</div></div>';
 }
 
