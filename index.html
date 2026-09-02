@@ -369,7 +369,7 @@ hr.sep{ border:none; border-top:1px solid var(--border); margin:16px 0; }
 .hist-title{ font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--sidebar-bg); margin:0 0 14px; }
 .mini-title{ display:block; font-size:16.5px; font-weight:600; color:var(--sidebar-bg); margin-bottom:4px; }
 .despacho-card-head{
-  background:var(--accent-soft); margin:0 -22px 16px; padding:14px 22px;
+  background:var(--surface-2); margin:0 -22px 16px; padding:14px 22px;
   border-radius:var(--radius-l) var(--radius-l) 0 0; align-items:center;
 }
 .enc-bullets-wrap{ margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
@@ -1499,7 +1499,7 @@ function renderAtualizacoesView(){
         '<div class="field" style="flex:2"><label>Link de anexo <span class="opt">opcional</span></label><input class="input" type="url" name="anexoLink" placeholder="https://..."></div>'+
       '</div>'+
       '<hr class="sep">'+
-      '<label style="display:block;margin-bottom:8px">Encaminhamentos para Calendário <span class="opt">opcional — vai direto para o Calendário</span></label>'+
+      '<label class="mini-title" style="display:block;margin-bottom:8px">Encaminhamentos para Calendário <span class="opt" style="color:var(--ink-muted);font-weight:400">opcional — vai direto para o Calendário</span></label>'+
       '<div class="field-row">'+
         '<div class="field" style="max-width:180px"><label class="opt">Tipo</label><select class="select" name="encTipo">'+
           '<option value="sat">Entrega SAT</option><option value="orgao">Entrega Órgão</option></select></div>'+
@@ -1537,7 +1537,7 @@ function renderCalendario(){
       var cls = mk.status==='concluído'?'done':(late?'late':
         (mk.tipo==='encaminhamento-sat'?'enc-sat':(mk.tipo==='encaminhamento-orgao'?'enc-orgao':(mk.tipo==='encaminhamento'?'enc':''))));
       var kindLbl = mk.tipo==='encaminhamento-sat'?'Encaminhamento SAT':(mk.tipo==='encaminhamento-orgao'?'Encaminhamento Órgão':(mk.tipo==='encaminhamento'?'Encaminhamento':'Entrega'));
-      return '<div class="cal-chip '+cls+'" data-action="open-projeto" data-id="'+esc(mk.projetoId)+'" title="'+kindLbl+': '+esc(mk.descricao)+' — '+esc(p?p.nome:'')+'">'+esc(mk.descricao)+'</div>';
+      return '<div class="cal-chip '+cls+'" data-action="open-projeto" data-id="'+esc(mk.projetoId)+'" title="'+kindLbl+' — '+esc(p?p.nome:'(projeto removido)')+': '+esc(mk.descricao)+'">'+esc(p?p.nome:'(projeto removido)')+'</div>';
     }).join('');
     cells += '<div class="cal-cell'+(isToday?' today':'')+'"><div class="cal-daynum">'+d+'</div>'+items+'</div>';
   }
