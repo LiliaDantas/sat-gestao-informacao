@@ -365,6 +365,10 @@ hr.sep{ border:none; border-top:1px solid var(--border); margin:16px 0; }
 .home-section-title{ font-family:var(--font-display); font-size:20px; font-weight:600; color:var(--accent); margin:28px 0 14px; }
 .hist-title{ font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--sidebar-bg); margin:0 0 14px; }
 .mini-title{ display:block; font-size:16.5px; font-weight:600; color:var(--sidebar-bg); margin-bottom:4px; }
+.despacho-card-head{
+  background:var(--accent-soft); margin:0 -22px 16px; padding:14px 22px;
+  border-radius:var(--radius-l) var(--radius-l) 0 0; align-items:center;
+}
 .shortcut-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; }
 .shortcut-card{
   display:flex; flex-direction:column; align-items:flex-start; gap:8px; text-align:left;
@@ -1153,8 +1157,8 @@ function renderDespachoBriefingCard(b){
       '<button class="btn btn-primary btn-sm" type="submit" style="margin-top:8px">Registrar</button>'+
     '</form>'
     : '';
-  return '<div class="card" style="margin-bottom:16px">'+
-    '<div class="flex gap12" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:10px">'+
+  return '<div class="card" style="margin-bottom:16px;padding-top:0">'+
+    '<div class="flex gap12 despacho-card-head" style="justify-content:space-between;flex-wrap:wrap">'+
       '<h3 style="margin:0"><button class="link-btn" style="font:inherit;color:inherit" data-action="open-briefing" data-id="'+b.id+'">'+esc(b.tema)+'</button></h3>'+
       '<button class="icon-btn" title="Remover do despacho" data-action="despacho-remove-briefing" data-id="'+b.id+'">✕</button>'+
     '</div>'+
@@ -1190,8 +1194,8 @@ function renderDespachoCard(p){
       '<button class="btn btn-primary btn-sm" type="submit" style="margin-top:8px">Registrar</button>'+
     '</form>'
     : '';
-  return '<div class="card" style="margin-bottom:16px">'+
-    '<div class="flex gap12" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:10px">'+
+  return '<div class="card" style="margin-bottom:16px;padding-top:0">'+
+    '<div class="flex gap12 despacho-card-head" style="justify-content:space-between;flex-wrap:wrap">'+
       '<h3 style="margin:0"><button class="link-btn" style="font:inherit;color:inherit" data-action="open-projeto" data-id="'+p.id+'">'+esc(p.nome)+'</button></h3>'+
       '<button class="icon-btn" title="Remover do despacho" data-action="despacho-remove" data-id="'+p.id+'">✕</button>'+
     '</div>'+
