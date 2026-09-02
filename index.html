@@ -237,6 +237,8 @@ label .opt{ font-weight:400; color:var(--ink-muted); }
 .filtro-row{ background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-s); padding:12px; margin-bottom:14px; }
 .textarea-principal{ background:var(--accent-soft); border-color:var(--accent-soft-ink); }
 .tag{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:6px; background:var(--surface-2); color:var(--ink-2); font-size:13.5px; font-weight:600; }
+.tag-atualizacao{ background:var(--sat-soft); color:var(--sat-ink); }
+.tag-encaminhamento{ background:var(--accent-soft); color:var(--accent-soft-ink); }
 .flag-review{ color:var(--warn); font-size:14px; font-weight:700; }
 .checkbox-cell{ width:36px; text-align:center; }
 input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--accent); cursor:pointer; vertical-align:middle; }
@@ -548,12 +550,9 @@ function esc(s){ return (s===undefined||s===null?'':String(s)).replace(/[&<>"']/
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function mdLite(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>'); }
 function origemTagHtml(origem){
-  if(origem==='encaminhamento') return '<span class="tag" title="Registrado a partir do Despacho">encaminhamento</span>';
-  if(origem==='encaminhamento-sat') return '<span class="tag tag-sat" title="Encaminhamento para o Calendário">Encaminhamento SAT</span>';
-  if(origem==='encaminhamento-orgao') return '<span class="tag tag-orgao" title="Encaminhamento para o Calendário">Encaminhamento Órgão</span>';
-  if(origem==='status') return '<span class="tag" title="Alteração de status">status</span>';
-  if(origem && origem!=='manual') return '<span class="tl-origin">'+(origem==='comment'?'migrado · comentário':'migrado · descrição')+'</span>';
-  return '';
+  var isEncaminhamento = (origem==='encaminhamento' || origem==='encaminhamento-sat' || origem==='encaminhamento-orgao');
+  if(isEncaminhamento) return '<span class="tag tag-encaminhamento">Encaminhamento</span>';
+  return '<span class="tag tag-atualizacao">Atualização</span>';
 }
 function uid(prefix){ return prefix+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
 function fmtDate(iso){ if(!iso) return '—'; var d=new Date(iso); if(isNaN(d.getTime())) return '—';
@@ -1294,10 +1293,11 @@ function renderAtualizacoesTimeline(tipo, id, opts){
       corpo = '<div class="tl-text">'+mdLite(a.texto)+'</div>';
     }
     return '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
-      '<div class="tl-meta"><span class="tl-author">'+esc(a.autor||'—')+'</span>·<span>'+fmtDateTime(a.data)+'</span>'+tagHtml+
-      '<span class="spacer"></span>'+
-      (editable&&!editando?'<button class="icon-btn" title="Editar" data-action="atual-edit-toggle" data-id="'+a.id+'">✎</button>':'')+
-      '<button class="icon-btn" title="Remover" data-action="del-atualizacao" data-id="'+a.id+'">✕</button></div>'+
+      '<div class="tl-meta">'+tagHtml+
+        '<span class="spacer"></span>'+
+        (editable&&!editando?'<button class="icon-btn" title="Editar" data-action="atual-edit-toggle" data-id="'+a.id+'">✎</button>':'')+
+        '<button class="icon-btn" title="Remover" data-action="del-atualizacao" data-id="'+a.id+'">✕</button></div>'+
+      '<div class="tl-meta" style="margin-top:2px"><span>'+fmtDateTime(a.data)+'</span><span>·</span><span>'+esc(a.autor||'—')+'</span></div>'+
       corpo+'</div></div>';
   }).join('') : '<div class="empty-state small">'+vazio+'</div>';
   var formHtml = mostrarForm ?
