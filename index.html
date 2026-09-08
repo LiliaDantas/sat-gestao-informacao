@@ -236,10 +236,9 @@ label .opt{ font-weight:400; color:var(--ink-muted); }
 .cal-chip.enc-sat{ background:var(--sat-soft); color:var(--sat-ink); }
 .cal-chip.enc-orgao{ background:var(--orgao-soft); color:var(--orgao-ink); }
 .filtro-row{ background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-s); padding:12px; margin-bottom:14px; }
-.textarea-principal{ background:var(--accent-soft); border-color:var(--accent-soft-ink); }
 .tag{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:6px; background:var(--surface-2); color:var(--ink-2); font-size:13.5px; font-weight:600; }
-.tag-atualizacao{ background:var(--sat-soft); color:var(--sat-ink); }
-.tag-encaminhamento{ background:var(--accent-soft); color:var(--accent-soft-ink); }
+.tag-atualizacao{ background:var(--orgao-soft); color:var(--orgao-ink); }
+.tag-encaminhamento{ background:#BFE3F7; color:#04466E; }
 .flag-review{ color:var(--warn); font-size:14px; font-weight:700; }
 .checkbox-cell{ width:36px; text-align:center; }
 input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--accent); cursor:pointer; vertical-align:middle; }
@@ -872,7 +871,7 @@ var NAV_ITEMS = [
   {id:'atualizacoes', label:'Registrar atualização', ic:'✎'},
   {id:'projetos', label:'Projetos', ic:'▤'},
   {id:'briefings', label:'Briefings e Estudos', ic:'▧'},
-  {id:'despacho', label:'Despacho', ic:'☑'},
+  {id:'despacho', label:'Reunião Gerencial', ic:'☑'},
   {id:'relatorio', label:'Administração', ic:'▲'}
 ];
 function despachoCount(){ return DB.despachoSelecionados.length; }
@@ -923,7 +922,7 @@ function renderTopbar(){
     actions = '<button class="btn btn-ghost" data-action="nav" data-view="briefings">← Voltar</button>';
   } else if(UI.view==='despacho'){
     actions = '<button class="btn btn-primary" data-action="new-marco-global">+ Nova entrega</button>';
-    if(despachoTotalCount()>0) actions = '<button class="btn btn-ghost" data-action="despacho-clear">Limpar despacho</button> '+actions;
+    if(despachoTotalCount()>0) actions = '<button class="btn btn-ghost" data-action="despacho-clear">Limpar Reunião Gerencial</button> '+actions;
   }
   if(UI.view!=='home'){
     actions = '<button class="btn btn-ghost" data-action="nav" data-view="home">⌂ Início</button>' + actions;
@@ -952,7 +951,7 @@ var HOME_SHORTCUTS = [
   {view:'briefings', ic:'▧', title:'Briefings e Estudos', desc:'Acompanhe temas em elaboração, prazos e orientações.'},
   {view:'atualizacoes', ic:'✎', title:'Registrar atualização', desc:'Inclua um novo registro em um projeto, briefing ou estudo.'},
   {view:'relatorio', ic:'▲', title:'Administração', desc:'Veja indicadores, prazos e pendências consolidadas.'},
-  {view:'despacho', ic:'☑', title:'Despacho', desc:'Reúna projetos selecionados, calendário e outras pautas.'}
+  {view:'despacho', ic:'☑', title:'Reunião Gerencial', desc:'Reúna projetos selecionados, calendário e outras pautas.'}
 ];
 function renderHome(){
   var ativos = projetosAtivos();
@@ -1063,7 +1062,7 @@ function renderProjetos(){
     var checked = DB.despachoSelecionados.indexOf(p.id)!==-1 ? ' checked' : '';
     var expanded = UI.projetoExpandidoId === p.id;
     var row = '<tr class="clickable'+(expanded?' expanded':'')+'" data-action="projeto-expand-toggle" data-id="'+p.id+'">'+
-      '<td class="checkbox-cell"><input type="checkbox" title="Enviar para Despacho" data-onchange="despacho-toggle" data-id="'+p.id+'"'+checked+'></td>'+
+      '<td class="checkbox-cell"><input type="checkbox" title="Enviar para Reunião Gerencial" data-onchange="despacho-toggle" data-id="'+p.id+'"'+checked+'></td>'+
       '<td class="strong">'+esc(p.nome)+(precisaRevisao(p)?' <span class="flag-review" title="Cadastro migrado — revisar">⚑</span>':'')+'</td>'+
       '<td>'+esc(p.orgao||'—')+'</td>'+
       '<td>'+esc(p.responsavel||'—')+'</td>'+
@@ -1087,7 +1086,7 @@ function renderProjetos(){
   return (
     renderFilterBar()+
     '<div class="hint" style="margin-bottom:10px">'+list.length+' projeto(s)</div>'+
-    (list.length ? '<div class="table-wrap"><table class="tbl-red"><thead><tr><th>Despacho</th><th>Nome</th><th>Órgão</th><th>Responsável</th><th>Status</th><th>Últ. atualização</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    (list.length ? '<div class="table-wrap"><table class="tbl-red"><thead><tr><th>Reunião</th><th>Nome</th><th>Órgão</th><th>Responsável</th><th>Status</th><th>Últ. atualização</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
       : '<div class="empty-state"><div class="big">—</div>Nenhum projeto encontrado com esses filtros.</div>')
   );
 }
@@ -1110,17 +1109,16 @@ function renderDespacho(){
 function renderDespachoProjetos(){
   var ids = DB.despachoSelecionados;
   if(!ids.length){
-    return '<div class="empty-state"><div class="big">☑</div>Nenhum projeto no despacho ainda.<br>'+
-      'Marque a caixa "Despacho" na lista de <button class="link-btn" data-action="nav" data-view="projetos">Projetos</button> para enviar itens para cá.</div>';
+    return '<div class="empty-state"><div class="big">☑</div>Nenhum projeto na Reunião Gerencial ainda.<br>'+
+      'Marque a caixa "Reunião" na lista de <button class="link-btn" data-action="nav" data-view="projetos">Projetos</button> para enviar itens para cá.</div>';
   }
   var projs = ids.map(getProjeto).filter(Boolean)
     .sort(function(a,b){ return new Date(b.dataUltimaAtualizacao||0) - new Date(a.dataUltimaAtualizacao||0); });
   return projs.map(renderDespachoCard).join('');
 }
 function renderDespachoPautas(){
-  return '<div class="card"><div class="section-title"><h2>Outras Pautas</h2>'+
-    '<span class="desc">Assuntos livres para o despacho, sem vínculo com um projeto específico. Sincronizado com a equipe.</span></div>'+
-    '<textarea class="textarea" style="min-height:280px" data-onchange="despacho-pauta" placeholder="Escreva aqui outros assuntos a tratar no despacho…">'+esc(DB.despachoPauta||'')+'</textarea></div>';
+  return '<div class="card">'+
+    '<textarea class="textarea" style="min-height:280px" data-onchange="despacho-pauta" placeholder="Escreva aqui outros assuntos a tratar na Reunião Gerencial…">'+esc(DB.despachoPauta||'')+'</textarea></div>';
 }
 function ultimaAtualizacaoDoProjeto(id){
   var list = DB.atualizacoes.filter(function(a){ return (a.alvoTipo||'projeto')==='projeto' && a.projetoId===id && a.origem!=='encaminhamento'; })
@@ -1145,8 +1143,8 @@ function renderEncaminhamentosBullets(tipo, id){
 function renderDespachoBriefings(){
   var ids = DB.despachoBriefingsSelecionados;
   if(!ids.length){
-    return '<div class="empty-state"><div class="big">☑</div>Nenhum briefing/estudo no despacho ainda.<br>'+
-      'Marque a caixa "Despacho" na lista de <button class="link-btn" data-action="nav" data-view="briefings">Briefings e Estudos</button> para enviar itens para cá.</div>';
+    return '<div class="empty-state"><div class="big">☑</div>Nenhum briefing/estudo na Reunião Gerencial ainda.<br>'+
+      'Marque a caixa "Reunião" na lista de <button class="link-btn" data-action="nav" data-view="briefings">Briefings e Estudos</button> para enviar itens para cá.</div>';
   }
   var itens = ids.map(getBriefing).filter(Boolean)
     .sort(function(a,b){ return new Date(b.dataUltimaAtualizacao||0) - new Date(a.dataUltimaAtualizacao||0); });
@@ -1180,7 +1178,7 @@ function renderDespachoBriefingCard(b){
   return '<div class="card" style="margin-bottom:16px;padding-top:0">'+
     '<div class="flex gap12 despacho-card-head" style="justify-content:space-between;flex-wrap:wrap">'+
       '<h3 style="margin:0"><button class="link-btn" style="font:inherit;color:inherit" data-action="open-briefing" data-id="'+b.id+'">'+esc(b.tema)+'</button></h3>'+
-      '<button class="icon-btn" title="Remover do despacho" data-action="despacho-remove-briefing" data-id="'+b.id+'">✕</button>'+
+      '<button class="icon-btn" title="Remover da Reunião Gerencial" data-action="despacho-remove-briefing" data-id="'+b.id+'">✕</button>'+
     '</div>'+
     ultimaHtml+
     renderEncaminhamentosBullets('briefing', b.id)+
@@ -1218,7 +1216,7 @@ function renderDespachoCard(p){
   return '<div class="card" style="margin-bottom:16px;padding-top:0">'+
     '<div class="flex gap12 despacho-card-head" style="justify-content:space-between;flex-wrap:wrap">'+
       '<h3 style="margin:0"><button class="link-btn" style="font:inherit;color:inherit" data-action="open-projeto" data-id="'+p.id+'">'+esc(p.nome)+'</button></h3>'+
-      '<button class="icon-btn" title="Remover do despacho" data-action="despacho-remove" data-id="'+p.id+'">✕</button>'+
+      '<button class="icon-btn" title="Remover da Reunião Gerencial" data-action="despacho-remove" data-id="'+p.id+'">✕</button>'+
     '</div>'+
     ultimaHtml+
     renderEncaminhamentosBullets('projeto', p.id)+
@@ -1390,7 +1388,7 @@ function renderBriefings(){
     var expanded = UI.briefingExpandidoId === b.id;
     var checked = DB.despachoBriefingsSelecionados.indexOf(b.id)!==-1 ? ' checked' : '';
     var row = '<tr class="clickable'+(expanded?' expanded':'')+'" data-action="briefing-expand-toggle" data-id="'+b.id+'">'+
-      '<td class="checkbox-cell"><input type="checkbox" title="Enviar para Despacho" data-onchange="despacho-toggle-briefing" data-id="'+b.id+'"'+checked+'></td>'+
+      '<td class="checkbox-cell"><input type="checkbox" title="Enviar para Reunião Gerencial" data-onchange="despacho-toggle-briefing" data-id="'+b.id+'"'+checked+'></td>'+
       '<td class="strong">'+esc(b.tema)+'</td>'+
       '<td>'+fmtDate(b.dataSolicitacao)+'</td>'+
       '<td>'+fmtDate(b.prazoEntrega)+'</td>'+
@@ -1417,7 +1415,7 @@ function renderBriefings(){
       '<div class="field"><label>&nbsp;</label><label class="flex gap6" style="font-weight:500;color:var(--ink-2)"><input type="checkbox" data-onchange="filtro-encerrados-briefing"'+(UI.filtros.encerradosBriefing?' checked':'')+'> mostrar encerrados</label></div>'+
     '</div>'+
     '<div class="hint" style="margin-bottom:10px">'+list.length+' briefing(s)/estudo(s)</div>'+
-    (list.length ? '<div class="table-wrap"><table class="tbl-red"><thead><tr><th>Despacho</th><th>Tema</th><th>Data da solicitação</th><th>Prazo de entrega</th><th>Últ. atualização</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    (list.length ? '<div class="table-wrap"><table class="tbl-red"><thead><tr><th>Reunião</th><th>Tema</th><th>Data da solicitação</th><th>Prazo de entrega</th><th>Últ. atualização</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
       : '<div class="empty-state"><div class="big">—</div>Nenhum briefing/estudo cadastrado ainda.</div>')
   );
 }
@@ -1488,18 +1486,18 @@ function renderAtualizacoesView(){
     formHtml = '<form data-form="nova-atualizacao-global">'+
       '<input type="hidden" name="tipoAlvo" value="projeto">'+
       '<div class="field-row filtro-row">'+
-        '<div class="field" style="max-width:200px"><label>Filtrar por órgão <span class="opt">opcional</span></label>'+
+        '<div class="field" style="max-width:200px"><label>Filtrar por órgão</label>'+
           '<select class="select" data-onchange="atual-orgao-filtro">'+selectOptions(DB.meta.orgaos,'','Todos os órgãos')+'</select></div>'+
         '<div class="field" style="flex:2"><label>Projeto</label><select class="select" name="alvoId" id="atual-projeto-select" data-onchange="atual-projeto-mudou" required>'+
           (selectedId?'':'<option value="">Selecione…</option>')+opts+'</select></div>'+
         '<div class="field" style="max-width:220px"><label>Autor</label>'+autorSelect()+'</div>'+
       '</div>'+
-      '<div class="field"><label>Texto da atualização</label><textarea class="textarea textarea-principal" name="texto" required placeholder="O que aconteceu?"></textarea></div>'+
+      '<div class="field"><label>Texto da atualização</label><textarea class="textarea" name="texto" required placeholder="O que aconteceu?"></textarea></div>'+
       '<div class="field-row">'+
-        '<div class="field" style="flex:2"><label>Link de anexo <span class="opt">opcional</span></label><input class="input" type="url" name="anexoLink" placeholder="https://..."></div>'+
+        '<div class="field" style="flex:2"><label>Link de anexo</label><input class="input" type="url" name="anexoLink" placeholder="https://..."></div>'+
       '</div>'+
       '<hr class="sep">'+
-      '<label class="mini-title" style="display:block;margin-bottom:8px">Encaminhamentos para Calendário <span class="opt" style="color:var(--ink-muted);font-weight:400">opcional — vai direto para o Calendário</span></label>'+
+      '<label class="mini-title" style="display:block;margin-bottom:8px">Encaminhamentos para Calendário</label>'+
       '<div class="field-row">'+
         '<div class="field" style="max-width:180px"><label class="opt">Tipo</label><select class="select" name="encTipo">'+
           '<option value="sat">Entrega SAT</option><option value="orgao">Entrega Órgão</option></select></div>'+
@@ -1511,7 +1509,7 @@ function renderAtualizacoesView(){
   }
   var feed = renderUltimosRegistros(tipo, selectedId);
   return '<div class="card">'+
-    '<div class="section-title section-title-underline"><h2>Registrar atualização</h2><span class="desc">Cada registro fica salvo no histórico do item.</span></div>'+
+    '<h2 class="section-title-underline">Registrar atualização</h2>'+
     toggleHtml+formHtml+'</div>'+
     '<div class="card"><div class="section-title section-title-underline"><h2>Últimos registros</h2></div><div class="timeline" id="ultimos-registros-wrap">'+
     feed+'</div></div>';
@@ -1613,10 +1611,9 @@ function renderRelatorio(){
       kpi(ativos.length,'Ativos','accent')+
       kpi(atrasados.length,'Entregas atrasadas', atrasados.length>0?'critical':'')+
     '</div>'+
-    '<div class="card" style="margin-top:16px"><div class="section-title"><h2>Cadastros migrados que precisam de revisão</h2>'+
-      '<span class="desc">status não identificado ou ambíguo na importação original</span></div>'+revisarHtml+'</div>'+
+    '<div class="card" style="margin-top:16px"><h2>Cadastros migrados que precisam de revisão</h2>'+revisarHtml+'</div>'+
     '<div class="card" style="margin-top:16px"><div class="section-title"><h2>Projetos por órgão</h2>'+
-      '<span class="desc"><button class="btn btn-sm" data-action="export-csv">Exportar CSV de projetos</button></span></div>'+
+      '<button class="btn btn-sm" data-action="export-csv">Exportar CSV de projetos</button></div>'+
       orgTable(orgaoRows,'Projetos','Nenhum projeto cadastrado.')+'</div>'
   );
 }
@@ -1669,9 +1666,9 @@ function renderProjetoFormModal(data){
       '<div class="field"><label>Objetivo</label><textarea class="textarea" name="objetivo">'+esc(p.objetivo)+'</textarea></div>'+
       '<div class="field-row">'+
         '<div class="field"><label>Autoridade solicitante</label><input class="input" name="autoridade" value="'+esc(p.autoridade)+'"></div>'+
-        '<div class="field"><label>Processo SEI <span class="opt">ex.: 1220.01.0002036/2025-51</span></label><input class="input mono" name="processoSei" value="'+esc(p.processoSei)+'"></div>'+
+        '<div class="field"><label>Processo SEI</label><input class="input mono" name="processoSei" value="'+esc(p.processoSei)+'"></div>'+
       '</div>'+
-      '<div class="field"><label>Link de referência externa <span class="opt">opcional</span></label><input class="input" name="trelloLink" value="'+esc(p.trelloLink||'')+'"></div>'+
+      '<div class="field"><label>Link de referência externa</label><input class="input" name="trelloLink" value="'+esc(p.trelloLink||'')+'"></div>'+
     '</div>'+
     '<div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>'+
       '<button type="submit" class="btn btn-primary">'+(mode==='edit'?'Salvar alterações':'Criar projeto')+'</button></div>'+
@@ -1691,7 +1688,7 @@ function renderBriefingFormModal(data){
         '<div class="field"><label>Prazo de entrega</label><input class="input" type="date" name="prazoEntrega" value="'+toDateInputVal(b.prazoEntrega)+'"></div>'+
       '</div>'+
       '<div class="field"><label>Detalhamento e orientações</label><textarea class="textarea" name="detalhamento">'+esc(b.detalhamento)+'</textarea></div>'+
-      '<div class="field"><label>Link do anexo <span class="opt">opcional</span></label><input class="input" type="url" name="anexoLink" value="'+esc(b.anexoLink||'')+'" placeholder="https://..."></div>'+
+      '<div class="field"><label>Link do anexo</label><input class="input" type="url" name="anexoLink" value="'+esc(b.anexoLink||'')+'" placeholder="https://..."></div>'+
     '</div>'+
     '<div class="modal-foot"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancelar</button>'+
       '<button type="submit" class="btn btn-primary">'+(mode==='edit'?'Salvar alterações':'Criar registro')+'</button></div>'+
@@ -1734,7 +1731,7 @@ function renderMarcoFormModal(data){
     '<div class="field"><label>Descrição</label><input class="input" name="descricao" value="'+esc(mode==='edit'?m.descricao:'')+'" placeholder="Ex.: Ordem de início de obra" required'+(showProjetoSelect?'':' data-autofocus')+'></div>'+
     '<div class="field-row">'+
       '<div class="field"><label>Data prevista</label><input class="input" type="date" name="dataPrevista" value="'+toDateInputVal(mode==='edit'?m.dataPrevista:'')+'" required></div>'+
-      (mode==='edit' ? '<div class="field"><label>Data realizada <span class="opt">opcional</span></label><input class="input" type="date" name="dataRealizada" value="'+toDateInputVal(m.dataRealizada)+'"></div>' : '')+
+      (mode==='edit' ? '<div class="field"><label>Data realizada</label><input class="input" type="date" name="dataRealizada" value="'+toDateInputVal(m.dataRealizada)+'"></div>' : '')+
     '</div>'+
     (mode==='edit' ? '<div class="field"><label>Status</label><select class="select" name="status">'+statusOpts+'</select></div>' : '')+
     '</div><div class="modal-foot">'+
