@@ -791,14 +791,27 @@ function paintLogin(loginError){
   var root = document.getElementById('root');
   if(!root) return;
   root.innerHTML =
-    '<div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background:var(--bg)">'+
-      '<form id="login-form" style="width:min(360px,90vw);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-l);padding:32px;box-shadow:var(--shadow)">'+
-        '<h1 style="font-size:22px;margin-bottom:4px">SAT</h1>'+
-        '<p class="muted small" style="margin-bottom:20px">SAT — Gestão da Informação</p>'+
-        (loginError ? '<div class="banner" style="border-color:var(--critical);color:var(--critical-ink);background:var(--critical-soft);margin-bottom:14px">'+esc(loginError)+'</div>' : '')+
-        '<div class="field"><label>E-mail</label><input class="input" type="email" id="login-email" required autofocus></div>'+
-        '<div class="field"><label>Senha</label><input class="input" type="password" id="login-senha" required></div>'+
-        '<button class="btn btn-primary" type="submit" style="width:100%;justify-content:center;margin-top:6px" id="login-btn">Entrar</button>'+
+    '<div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background:#F4F6F8">'+
+      '<form id="login-form" style="width:min(400px,90vw);background:#fff;border-radius:28px;padding:40px 36px;box-shadow:0 12px 40px rgba(2,125,156,.14);text-align:center">'+
+        '<div style="width:64px;height:64px;border-radius:18px;background:#E4F3F7;display:flex;align-items:center;justify-content:center;margin:0 auto 20px">'+
+          '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#027D9C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'+
+        '</div>'+
+        '<h1 style="font-size:24px;margin-bottom:8px;color:var(--sidebar-bg)">Bem-vindo</h1>'+
+        '<p class="muted" style="margin-bottom:24px;line-height:1.4">Acesse o sistema de gestão da informação da SAT/SCC</p>'+
+        (loginError ? '<div class="banner" style="border-color:var(--critical);color:var(--critical-ink);background:var(--critical-soft);margin-bottom:14px;text-align:left">'+esc(loginError)+'</div>' : '')+
+        '<div style="margin-bottom:14px;text-align:left">'+
+          '<input class="input" type="email" id="login-email" placeholder="seu.email@exemplo.gov.br" required autofocus '+
+            'style="background:#E9F1FB;border:none;border-radius:14px;padding:14px 16px;font-size:15px;width:100%;box-sizing:border-box">'+
+        '</div>'+
+        '<div style="margin-bottom:22px;text-align:left">'+
+          '<input class="input" type="password" id="login-senha" placeholder="Senha" required '+
+            'style="background:#E9F1FB;border:none;border-radius:14px;padding:14px 16px;font-size:15px;width:100%;box-sizing:border-box">'+
+        '</div>'+
+        '<button type="submit" id="login-btn" style="width:100%;background:#027D9C;color:#fff;border:none;border-radius:14px;'+
+          'padding:15px;font-size:15px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;cursor:pointer;'+
+          'display:flex;align-items:center;justify-content:center;gap:8px">'+
+          '<span style="font-size:16px">→</span> Entrar'+
+        '</button>'+
       '</form>'+
     '</div>';
   var email = document.getElementById('login-email');
