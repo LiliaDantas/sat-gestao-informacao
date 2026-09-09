@@ -239,6 +239,7 @@ label .opt{ font-weight:400; color:var(--ink-muted); }
 .tag{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:6px; background:var(--surface-2); color:var(--ink-2); font-size:13.5px; font-weight:600; }
 .tag-atualizacao{ background:var(--orgao-soft); color:var(--orgao-ink); }
 .tag-encaminhamento{ background:#BFE3F7; color:#04466E; }
+.tag-atraso{ background:var(--critical-soft); color:var(--critical-ink); }
 .flag-review{ color:var(--warn); font-size:14px; font-weight:700; }
 .checkbox-cell{ width:36px; text-align:center; }
 input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--accent); cursor:pointer; vertical-align:middle; }
@@ -461,12 +462,12 @@ function projetoToRow(p){
 }
 function rowToBriefing(r){
   return { id:r.id, tema:r.tema, dataSolicitacao:r.data_solicitacao, prazoEntrega:r.prazo_entrega,
-    detalhamento:r.detalhamento||"", anexoLink:r.anexo_link||"", encerrado:!!r.encerrado,
+    detalhamento:r.detalhamento||"", anexoLink:r.anexo_link||"", encerrado:!!r.encerrado, orgao:r.orgao||"",
     dataCriacao:r.data_criacao, dataUltimaAtualizacao:r.data_ultima_atualizacao };
 }
 function briefingToRow(b){
   return { id:b.id, tema:b.tema, data_solicitacao:b.dataSolicitacao||null, prazo_entrega:b.prazoEntrega||null,
-    detalhamento:b.detalhamento||null, anexo_link:b.anexoLink||null, encerrado:!!b.encerrado,
+    detalhamento:b.detalhamento||null, anexo_link:b.anexoLink||null, encerrado:!!b.encerrado, orgao:b.orgao||null,
     data_criacao:b.dataCriacao||null, data_ultima_atualizacao:b.dataUltimaAtualizacao||null };
 }
 function rowToAtualizacao(r){
@@ -527,13 +528,14 @@ function restoreSession(){
   }catch(e){}
   return false;
 }
-function deriveMeta(projetos){
+function deriveMeta(projetos, briefings){
   var orgaos = {}, responsaveis = {}, status = {};
   projetos.forEach(function(p){
     if(p.orgao) orgaos[p.orgao] = true;
     if(p.responsavel) responsaveis[p.responsavel] = true;
     if(p.status) status[p.status] = true;
   });
+  (briefings||[]).forEach(function(b){ if(b.orgao) orgaos[b.orgao] = true; });
   return { orgaos: Object.keys(orgaos).sort(), responsaveis: Object.keys(responsaveis).sort(),
     status: Object.keys(status).sort(), origemBoard:"SAT Secgeral", importadoEm:null };
 }
@@ -542,7 +544,7 @@ var DB = null;
 var UI = { view:'home', selectedProjetoId:null, selectedBriefingId:null, projetoTab:'geral', modal:null,
            filtros:{ q:'', orgao:'', responsavel:'', status:'', encerrados:false, encerradosBriefing:false },
            calMonth: (new Date()).getFullYear()+'-'+((new Date()).getMonth()+1),
-           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{}, atualEditId:null, atrasadasAberto:false,
+           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{}, atualEditId:null, atrasadasAberto:false, onepageOrgao:'',
            projetoExpandidoId:null, briefingExpandidoId:null, briefingFiltroQ:'', atualTipoAlvo:'projeto' };
 
 /* ---------------------------------------------------------------- utils */
@@ -679,7 +681,7 @@ function getBriefing(id){
 function addBriefing(data){
   var id = uid('br');
   var b = Object.assign({
-    id:id, tema:'', dataSolicitacao:null, prazoEntrega:null, detalhamento:'', anexoLink:'', encerrado:false,
+    id:id, tema:'', dataSolicitacao:null, prazoEntrega:null, detalhamento:'', anexoLink:'', encerrado:false, orgao:'',
     dataCriacao:nowIso(), dataUltimaAtualizacao:nowIso()
   }, data);
   DB.briefings.push(b);
@@ -827,7 +829,7 @@ function carregarTudoDoSupabase(){
     DB.atualizacoes = results[2].map(rowToAtualizacao);
     DB.anexos = results[3].map(rowToAnexo);
     DB.marcos = results[4].map(rowToMarco);
-    DB.meta = deriveMeta(DB.projetos);
+    DB.meta = deriveMeta(DB.projetos, DB.briefings);
     dbLoading = false; dbOffline = false;
     normalizeDB();
     paint();
@@ -872,6 +874,7 @@ var NAV_ITEMS = [
   {id:'projetos', label:'Projetos', ic:'▤'},
   {id:'briefings', label:'Briefings e Estudos', ic:'▧'},
   {id:'despacho', label:'Reunião Gerencial', ic:'☑'},
+  {id:'onepage', label:'One Page Report', ic:'▦'},
   {id:'relatorio', label:'Administração', ic:'▲'}
 ];
 function despachoCount(){ return DB.despachoSelecionados.length; }
@@ -939,6 +942,7 @@ function renderView(){
     case 'briefings': return renderBriefings();
     case 'briefing-detail': return renderBriefingDetail();
     case 'atualizacoes': return renderAtualizacoesView();
+    case 'onepage': return renderOnePageReport();
     case 'relatorio': return renderRelatorio();
     case 'despacho': return renderDespacho();
     default: return renderHome();
@@ -1593,6 +1597,77 @@ function barChart(rows, opts){
       '<div class="val">'+r.value+'</div></div>';
   }).join('')+'</div>';
 }
+/* -------------------------------------------------------------- one page report */
+function relatorioOrgaoProjetos(orgao){
+  var cutoff = Date.now() - 60*86400000;
+  return DB.projetos.filter(function(p){
+    if((p.orgao||'')!==orgao) return false;
+    return DB.atualizacoes.some(function(a){
+      return (a.alvoTipo||'projeto')==='projeto' && a.projetoId===p.id && new Date(a.data).getTime()>=cutoff;
+    });
+  }).sort(function(a,b){ return new Date(b.dataUltimaAtualizacao||0)-new Date(a.dataUltimaAtualizacao||0); });
+}
+function relatorioOrgaoBriefings(orgao){
+  var cutoff = Date.now() - 60*86400000;
+  return DB.briefings.filter(function(b){
+    if((b.orgao||'')!==orgao) return false;
+    return DB.atualizacoes.some(function(a){
+      return a.alvoTipo==='briefing' && a.projetoId===b.id && new Date(a.data).getTime()>=cutoff;
+    });
+  }).sort(function(a,b){ return new Date(b.dataUltimaAtualizacao||0)-new Date(a.dataUltimaAtualizacao||0); });
+}
+function marcoTagsHtml(mk){
+  var tags = '';
+  if(mk.tipo==='encaminhamento-sat') tags += '<span class="tag tag-sat">Entrega SAT</span>';
+  else if(mk.tipo==='encaminhamento-orgao') tags += '<span class="tag tag-orgao">Entrega Órgão</span>';
+  if(isMarcoAtrasado(mk)) tags += '<span class="tag tag-atraso">Atraso</span>';
+  return tags;
+}
+function renderRelatorioTopicos(tipo, id){
+  var cutoff = Date.now() - 60*86400000;
+  var topicos = DB.atualizacoes.filter(function(a){
+    return (a.alvoTipo||'projeto')===tipo && a.projetoId===id && new Date(a.data).getTime()>=cutoff;
+  }).map(function(a){
+    return { data:a.data, html:
+      '<div class="tl-item"><div class="tl-dot"></div><div class="tl-body">'+
+        '<div class="tl-meta">'+origemTagHtml(a.origem)+'</div>'+
+        '<div class="tl-meta" style="margin-top:2px"><span>'+fmtDateTime(a.data)+'</span><span>·</span><span>'+esc(a.autor||'—')+'</span></div>'+
+        '<div class="tl-text">'+mdLite(a.texto)+'</div></div></div>' };
+  });
+  if(tipo==='projeto'){
+    marcosOf(id).forEach(function(mk){
+      var atrasado = isMarcoAtrasado(mk);
+      topicos.push({ data: mk.dataPrevista, html:
+        '<div class="tl-item"><div class="tl-dot"'+(atrasado?' style="background:var(--critical)"':'')+'></div><div class="tl-body">'+
+          '<div class="tl-meta">'+marcoTagsHtml(mk)+'</div>'+
+          '<div class="tl-meta" style="margin-top:2px"><span'+(atrasado?' style="color:var(--critical);font-weight:700"':'')+'>'+fmtDate(mk.dataPrevista)+'</span></div>'+
+          '<div class="tl-text">'+mdLite(mk.descricao)+'</div></div></div>' });
+    });
+  }
+  topicos.sort(function(a,b){ return new Date(b.data||0)-new Date(a.data||0); });
+  return topicos.length ? topicos.map(function(t){return t.html;}).join('') : '<div class="empty-state small">Nenhum registro recente.</div>';
+}
+function renderOnePageReport(){
+  var orgao = UI.onepageOrgao || '';
+  var selectHtml = '<div class="card"><div class="field" style="max-width:340px"><label>Selecione o órgão</label>'+
+    '<select class="select" data-onchange="onepage-orgao">'+selectOptions(DB.meta.orgaos, orgao, 'Selecione um órgão…')+'</select></div></div>';
+  if(!orgao) return selectHtml+'<div class="empty-state" style="margin-top:16px">Selecione um órgão para ver o resumo dos últimos 60 dias.</div>';
+
+  var projs = relatorioOrgaoProjetos(orgao);
+  var briefs = relatorioOrgaoBriefings(orgao);
+
+  var projsHtml = projs.length ? projs.map(function(p){
+    return '<div class="card" style="margin-bottom:16px"><h3 style="margin-bottom:12px">'+esc(p.nome)+'</h3>'+renderRelatorioTopicos('projeto', p.id)+'</div>';
+  }).join('') : '<div class="empty-state small">Nenhum projeto deste órgão com atualização nos últimos 60 dias.</div>';
+
+  var briefsHtml = briefs.length ? briefs.map(function(b){
+    return '<div class="card" style="margin-bottom:16px"><h3 style="margin-bottom:12px">'+esc(b.tema)+'</h3>'+renderRelatorioTopicos('briefing', b.id)+'</div>';
+  }).join('') : '<div class="empty-state small">Nenhum briefing/estudo deste órgão com atualização nos últimos 60 dias.</div>';
+
+  return selectHtml+
+    '<h2 class="despacho-section-title" style="margin-top:20px">Projetos</h2>'+projsHtml+
+    '<h2 class="despacho-section-title">Briefings e Estudos</h2>'+briefsHtml;
+}
 function renderRelatorio(){
   var ativos = projetosAtivos();
   var atrasados = DB.marcos.filter(isMarcoAtrasado);
@@ -1689,13 +1764,17 @@ function renderProjetoFormModal(data){
 }
 function renderBriefingFormModal(data){
   var mode = data.mode, b = mode==='edit' ? getBriefing(data.id) : {
-    tema:'', dataSolicitacao:null, prazoEntrega:null, detalhamento:'', anexoLink:''
+    tema:'', dataSolicitacao:null, prazoEntrega:null, detalhamento:'', anexoLink:'', orgao:''
   };
+  var orgaoOptsB = DB.meta.orgaos.map(function(o){ return '<option value="'+esc(o)+'"'+(o===b.orgao?' selected':'')+'>'+esc(o)+'</option>'; }).join('');
   return '<div class="modal wide" data-stop="1"><div class="modal-head"><h3>'+(mode==='edit'?'Editar briefing/estudo':'Novo briefing/estudo')+'</h3>'+
     '<button class="icon-btn" data-action="close-modal">✕</button></div>'+
     '<form data-form="'+(mode==='edit'?'editar-briefing':'novo-briefing')+'"'+(mode==='edit'?' data-id="'+b.id+'"':'')+'>'+
     '<div class="modal-body">'+
       '<div class="field"><label>Tema</label><input class="input" name="tema" value="'+esc(b.tema)+'" required data-autofocus></div>'+
+      '<div class="field"><label>Órgão</label><select class="select" name="orgao" data-onchange="orgao-select">'+
+        '<option value="">Selecione…</option>'+orgaoOptsB+'<option value="__outro__">Outro (especificar)</option></select>'+
+        '<input class="input" name="orgaoOutro" placeholder="Nome do órgão" style="margin-top:6px;display:none" data-orgao-outro></div>'+
       '<div class="field-row">'+
         '<div class="field"><label>Data da solicitação</label><input class="input" type="date" name="dataSolicitacao" value="'+toDateInputVal(b.dataSolicitacao)+'"></div>'+
         '<div class="field"><label>Prazo de entrega</label><input class="input" type="date" name="prazoEntrega" value="'+toDateInputVal(b.prazoEntrega)+'"></div>'+
@@ -1948,6 +2027,7 @@ function handleChange(kind, el){
   else if(kind==='filtro-status'){ UI.filtros.status = el.value; paint(); }
   else if(kind==='filtro-encerrados'){ UI.filtros.encerrados = el.checked; paint(); }
   else if(kind==='filtro-encerrados-briefing'){ UI.filtros.encerradosBriefing = el.checked; paint(); }
+  else if(kind==='onepage-orgao'){ UI.onepageOrgao = el.value; paint(); }
   else if(kind==='atual-orgao-filtro'){
     var target = document.getElementById('atual-projeto-select');
     if(!target) return;
@@ -2117,6 +2197,7 @@ function handleFormSubmit(kind, form){
     if(!tema) return;
     var dataB = {
       tema: tema,
+      orgao: resolveOrgao(form),
       dataSolicitacao: fromDateInputVal(fd.get('dataSolicitacao')),
       prazoEntrega: fromDateInputVal(fd.get('prazoEntrega')),
       detalhamento: (fd.get('detalhamento')||'').toString(),
