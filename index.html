@@ -544,7 +544,7 @@ var DB = null;
 var UI = { view:'home', selectedProjetoId:null, selectedBriefingId:null, projetoTab:'geral', modal:null,
            filtros:{ q:'', orgao:'', responsavel:'', status:'', encerrados:false, encerradosBriefing:false },
            calMonth: (new Date()).getFullYear()+'-'+((new Date()).getMonth()+1),
-           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{}, atualEditId:null, atrasadasAberto:false, onepageOrgao:'',
+           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{}, atualEditId:null, atrasadasAberto:false, onepageOrgao:'', onepageExpandido:{},
            projetoExpandidoId:null, briefingExpandidoId:null, briefingFiltroQ:'', atualTipoAlvo:'projeto' };
 
 /* ---------------------------------------------------------------- utils */
@@ -955,7 +955,8 @@ var HOME_SHORTCUTS = [
   {view:'briefings', ic:'▧', title:'Briefings e Estudos', desc:'Acompanhe temas em elaboração, prazos e orientações.'},
   {view:'atualizacoes', ic:'✎', title:'Registrar atualização', desc:'Inclua um novo registro em um projeto, briefing ou estudo.'},
   {view:'relatorio', ic:'▲', title:'Administração', desc:'Veja indicadores, prazos e pendências consolidadas.'},
-  {view:'despacho', ic:'☑', title:'Reunião Gerencial', desc:'Reúna projetos selecionados, calendário e outras pautas.'}
+  {view:'despacho', ic:'☑', title:'Reunião Gerencial', desc:'Reúna projetos selecionados, calendário e outras pautas.'},
+  {view:'onepage', ic:'▦', title:'One Page Report', desc:'Resumo por órgão dos últimos 60 dias.'}
 ];
 function renderHome(){
   var ativos = projetosAtivos();
@@ -1657,11 +1658,25 @@ function renderOnePageReport(){
   var briefs = relatorioOrgaoBriefings(orgao);
 
   var projsHtml = projs.length ? projs.map(function(p){
-    return '<div class="card" style="margin-bottom:16px"><h3 style="margin-bottom:12px">'+esc(p.nome)+'</h3>'+renderRelatorioTopicos('projeto', p.id)+'</div>';
+    var aberto = !!UI.onepageExpandido[p.id];
+    return '<div class="card" style="margin-bottom:12px;padding:14px 22px">'+
+      '<div class="section-title" style="cursor:pointer;margin-bottom:0" data-action="onepage-toggle" data-id="'+p.id+'">'+
+        '<h3 style="margin:0">'+esc(p.nome)+'</h3>'+
+        '<button class="round-icon-btn" style="pointer-events:none">'+(aberto?'–':'+')+'</button>'+
+      '</div>'+
+      (aberto ? '<div style="margin-top:14px">'+renderRelatorioTopicos('projeto', p.id)+'</div>' : '')+
+    '</div>';
   }).join('') : '<div class="empty-state small">Nenhum projeto deste órgão com atualização nos últimos 60 dias.</div>';
 
   var briefsHtml = briefs.length ? briefs.map(function(b){
-    return '<div class="card" style="margin-bottom:16px"><h3 style="margin-bottom:12px">'+esc(b.tema)+'</h3>'+renderRelatorioTopicos('briefing', b.id)+'</div>';
+    var aberto = !!UI.onepageExpandido[b.id];
+    return '<div class="card" style="margin-bottom:12px;padding:14px 22px">'+
+      '<div class="section-title" style="cursor:pointer;margin-bottom:0" data-action="onepage-toggle" data-id="'+b.id+'">'+
+        '<h3 style="margin:0">'+esc(b.tema)+'</h3>'+
+        '<button class="round-icon-btn" style="pointer-events:none">'+(aberto?'–':'+')+'</button>'+
+      '</div>'+
+      (aberto ? '<div style="margin-top:14px">'+renderRelatorioTopicos('briefing', b.id)+'</div>' : '')+
+    '</div>';
   }).join('') : '<div class="empty-state small">Nenhum briefing/estudo deste órgão com atualização nos últimos 60 dias.</div>';
 
   return selectHtml+
@@ -1924,6 +1939,8 @@ function handleAction(action, el, e){
     UI.atualTipoAlvo = el.dataset.tipo; paint();
   } else if(action==='toggle-atrasadas'){
     UI.atrasadasAberto = !UI.atrasadasAberto; paint();
+  } else if(action==='onepage-toggle'){
+    UI.onepageExpandido[id] = !UI.onepageExpandido[id]; paint();
   } else if(action==='kpi-drill'){
     openModal('kpi-list', {kind: el.dataset.kind});
   } else if(action==='projeto-tab'){
