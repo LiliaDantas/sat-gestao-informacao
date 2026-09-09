@@ -1528,14 +1528,15 @@ function renderAtualizacoesView(){
 
 /* -------------------------------------------------------------- calendário */
 function monthLabel(y,m){ var s = new Date(y,m,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}); return s.charAt(0).toUpperCase()+s.slice(1); }
-function renderCalendario(){
+function renderCalendario(orgaoFiltro){
   var parts = UI.calMonth.split('-'); var y = parseInt(parts[0],10), m = parseInt(parts[1],10)-1;
   var first = new Date(y,m,1);
   var startDow = first.getDay();
   var daysInMonth = new Date(y,m+1,0).getDate();
   var today = new Date(); today.setHours(0,0,0,0);
+  var marcosFiltrados = orgaoFiltro ? DB.marcos.filter(function(mk){ var p=getProjeto(mk.projetoId); return p && p.orgao===orgaoFiltro; }) : DB.marcos;
   var byDay = {};
-  DB.marcos.forEach(function(mk){ if(!mk.dataPrevista) return; var key = mk.dataPrevista.slice(0,10); (byDay[key]=byDay[key]||[]).push(mk); });
+  marcosFiltrados.forEach(function(mk){ if(!mk.dataPrevista) return; var key = mk.dataPrevista.slice(0,10); (byDay[key]=byDay[key]||[]).push(mk); });
   var cells = '';
   for(var i=0;i<startDow;i++) cells += '<div class="cal-cell pad"></div>';
   for(var d=1; d<=daysInMonth; d++){
@@ -1552,7 +1553,7 @@ function renderCalendario(){
   }
   var dow = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(function(x){return '<div class="cal-dow">'+x+'</div>';}).join('');
 
-  var atrasados = DB.marcos.filter(isMarcoAtrasado);
+  var atrasados = marcosFiltrados.filter(isMarcoAtrasado);
   var porProjeto = {};
   atrasados.forEach(function(mk){ (porProjeto[mk.projetoId]=porProjeto[mk.projetoId]||[]).push(mk); });
   var projsAtrasados = Object.keys(porProjeto).map(getProjeto).filter(Boolean)
@@ -1681,7 +1682,8 @@ function renderOnePageReport(){
 
   return selectHtml+
     '<h2 class="despacho-section-title" style="margin-top:20px">Projetos</h2>'+projsHtml+
-    '<h2 class="despacho-section-title">Briefings e Estudos</h2>'+briefsHtml;
+    '<h2 class="despacho-section-title">Briefings e Estudos</h2>'+briefsHtml+
+    '<h2 class="despacho-section-title">Calendário</h2>'+renderCalendario(orgao);
 }
 function renderRelatorio(){
   var ativos = projetosAtivos();
