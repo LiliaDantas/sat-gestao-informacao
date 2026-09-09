@@ -542,7 +542,7 @@ var DB = null;
 var UI = { view:'home', selectedProjetoId:null, selectedBriefingId:null, projetoTab:'geral', modal:null,
            filtros:{ q:'', orgao:'', responsavel:'', status:'', encerrados:false, encerradosBriefing:false },
            calMonth: (new Date()).getFullYear()+'-'+((new Date()).getMonth()+1),
-           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{}, atualEditId:null,
+           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{}, atualEditId:null, atrasadasAberto:false,
            projetoExpandidoId:null, briefingExpandidoId:null, briefingFiltroQ:'', atualTipoAlvo:'projeto' };
 
 /* ---------------------------------------------------------------- utils */
@@ -992,7 +992,8 @@ function kpi(num, label, tone, kind, numColor){
 var KPI_TITLES = {
   ativos:'Projetos ativos', encerrados:'Projetos encerrados / arquivados',
   atual30:'Projetos atualizados nos últimos 30 dias', entregas7:'Projetos com entregas nos próximos 7 dias',
-  atrasadas:'Projetos com entregas em atraso', sem60:'Projetos sem atualização há mais de 60 dias'
+  atrasadas:'Projetos com entregas em atraso', sem60:'Projetos sem atualização há mais de 60 dias',
+  usuarios:'Usuários cadastrados'
 };
 function getKpiProjetos(kind){
   var ids = [];
@@ -1473,11 +1474,16 @@ function renderAtualizacoesView(){
       .map(function(b){ return '<option value="'+b.id+'"'+(b.id===selectedId?' selected':'')+'>'+esc(b.tema)+'</option>'; }).join('');
     formHtml = '<form data-form="nova-atualizacao-global">'+
       '<input type="hidden" name="tipoAlvo" value="briefing">'+
-      '<div class="field"><label>Briefing / Estudo</label><select class="select" name="alvoId" id="atual-briefing-select" data-onchange="atual-briefing-mudou" required>'+
-        (selectedId?'':'<option value="">Selecione…</option>')+optsB+'</select></div>'+
+      '<div class="field-row filtro-row">'+
+        '<div class="field" style="flex:2"><label>Briefing / Estudo</label><select class="select" name="alvoId" id="atual-briefing-select" data-onchange="atual-briefing-mudou" required>'+
+          (selectedId?'':'<option value="">Selecione…</option>')+optsB+'</select></div>'+
+        '<div class="field" style="max-width:220px"><label>Autor</label>'+autorSelect()+'</div>'+
+      '</div>'+
       '<div class="field"><label>Texto da atualização</label><textarea class="textarea" name="texto" required placeholder="O que aconteceu?"></textarea></div>'+
-      '<div class="field" style="max-width:260px"><label>Autor</label>'+autorSelect()+'</div>'+
-      '<button class="btn btn-primary" type="submit" style="margin-top:6px">Registrar</button>'+
+      '<div class="field-row">'+
+        '<div class="field" style="flex:2"><label>Link de anexo</label><input class="input" type="url" name="anexoLink" placeholder="https://..."></div>'+
+      '</div>'+
+      '<button class="btn btn-primary" type="submit">Registrar</button>'+
     '</form>';
   } else {
     selectedId = UI.selectedProjetoId;
@@ -1566,7 +1572,13 @@ function renderCalendario(){
         '<button class="icon-btn" data-action="cal-next">→</button></div>'+
       '<div class="cal-card-body"><div class="cal-grid">'+dow+cells+'</div></div>'+
     '</div>'+
-    '<div class="card" style="margin-top:16px"><div class="section-title"><h2>Entregas em atraso</h2></div>'+atrasadosHtml+'</div>'
+    '<div class="card" style="margin-top:16px;padding:16px 22px">'+
+      '<div class="section-title" style="cursor:pointer;margin-bottom:0" data-action="toggle-atrasadas">'+
+        '<h2>Entregas em atraso'+(projsAtrasados.length?' ('+projsAtrasados.length+')':'')+'</h2>'+
+        '<button class="round-icon-btn" style="pointer-events:none">'+(UI.atrasadasAberto?'–':'+')+'</button>'+
+      '</div>'+
+      (UI.atrasadasAberto ? '<div style="margin-top:16px">'+atrasadosHtml+'</div>' : '')+
+    '</div>'
   );
 }
 
@@ -1610,6 +1622,7 @@ function renderRelatorio(){
       kpi(DB.projetos.length,'Total de projetos','')+
       kpi(ativos.length,'Ativos','accent')+
       kpi(atrasados.length,'Entregas atrasadas', atrasados.length>0?'critical':'')+
+      kpi(DB.meta.responsaveis.length,'Usuários cadastrados','','usuarios','#000000')+
     '</div>'+
     '<div class="card" style="margin-top:16px"><h2>Cadastros migrados que precisam de revisão</h2>'+revisarHtml+'</div>'+
     '<div class="card" style="margin-top:16px"><div class="section-title"><h2>Projetos por órgão</h2>'+
@@ -1695,6 +1708,15 @@ function renderBriefingFormModal(data){
     '</form></div>';
 }
 function renderKpiListModal(data){
+  if(data.kind==='usuarios'){
+    var nomes = DB.meta.responsaveis.slice().sort(function(a,b){return a.localeCompare(b,'pt-BR');});
+    var itensU = nomes.length ? nomes.map(function(n){
+      return '<div class="tl-item" style="padding:8px 0">'+esc(n)+'</div>';
+    }).join('') : '<div class="empty-state small">Nenhum usuário cadastrado.</div>';
+    return '<div class="modal" data-stop="1"><div class="modal-head"><h3>Usuários cadastrados</h3><button class="icon-btn" data-action="close-modal">✕</button></div>'+
+      '<div class="modal-body"><div class="timeline" style="max-height:50vh;overflow-y:auto">'+itensU+'</div></div>'+
+      '<div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Fechar</button></div></div>';
+  }
   var list = getKpiProjetos(data.kind);
   var title = KPI_TITLES[data.kind] || 'Projetos';
   var items = list.length ? list.map(function(p){
@@ -1821,6 +1843,8 @@ function handleAction(action, el, e){
     UI.briefingExpandidoId = (UI.briefingExpandidoId===id) ? null : id; paint();
   } else if(action==='atual-tipo-set'){
     UI.atualTipoAlvo = el.dataset.tipo; paint();
+  } else if(action==='toggle-atrasadas'){
+    UI.atrasadasAberto = !UI.atrasadasAberto; paint();
   } else if(action==='kpi-drill'){
     openModal('kpi-list', {kind: el.dataset.kind});
   } else if(action==='projeto-tab'){
@@ -1990,7 +2014,7 @@ function handleFormSubmit(kind, form){
     var autor = resolveAutor(form);
     if(autor) setLastAutor(autor);
     var isProjeto = tipoAlvo==='projeto';
-    var anexoLink = (isGlobal && isProjeto) ? (fd.get('anexoLink')||'').toString().trim() : '';
+    var anexoLink = isGlobal ? (fd.get('anexoLink')||'').toString().trim() : '';
     var encTipo = (isGlobal && isProjeto) ? (fd.get('encTipo')||'sat') : null;
     var encData = (isGlobal && isProjeto) ? fromDateInputVal(fd.get('encData')) : null;
     var encTexto = (isGlobal && isProjeto) ? (fd.get('encTexto')||'').toString().trim() : '';
