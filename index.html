@@ -24,11 +24,11 @@
   --ink:#16231F;
   --ink-2:#45524B;
   --ink-muted:#75816F;
-  --accent:#0F62FE;
-  --accent-strong:#0C4CC6;
+  --accent:#2799CE;
+  --accent-strong:#1F7AA5;
   --accent-ink:#FFFFFF;
-  --accent-soft:#E9F1FF;
-  --accent-soft-ink:#072C72;
+  --accent-soft:#E9F5FA;
+  --accent-soft-ink:#134963;
   --good:#24A148;      --good-soft:#E5F4E9;      --good-ink:#145928;
   --warn:#F1C21B;      --warn-soft:#FDF8E4;      --warn-ink:#856B0F;
   --critical:#DA1E28;  --critical-soft:#FBE4E5;  --critical-ink:#781016;
@@ -135,10 +135,15 @@ button{ font-family:inherit; }
 .main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
 .topbar{
   display:flex; align-items:center; justify-content:space-between; gap:16px;
-  padding:16px 28px; border-bottom:2px solid var(--sidebar-bg); background:var(--topbar-bg); position:sticky; top:0; z-index:5;
+  padding:22px 28px 18px; background:linear-gradient(120deg, var(--sidebar-bg) 0%, var(--accent) 100%);
+  position:sticky; top:0; z-index:5; overflow:hidden;
 }
-.topbar h1{ font-size:27px; }
-.topbar .crumb{ font-size:14.5px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:2px; }
+.topbar h1{ font-size:28px; color:#fff; font-weight:700; }
+.topbar .crumb{ font-size:14.5px; color:rgba(255,255,255,.78); text-transform:uppercase; letter-spacing:.06em; margin-bottom:2px; }
+.topbar-wave{ position:absolute; left:0; right:0; bottom:-1px; width:100%; height:16px; line-height:0; pointer-events:none; }
+.topbar .btn-ghost{ color:#fff; border-color:rgba(255,255,255,.55); }
+.topbar .btn-ghost:hover{ background:rgba(255,255,255,.15); }
+.topbar .btn-primary{ box-shadow:0 0 0 1px rgba(255,255,255,.45) inset; }
 .view{ padding:24px 28px 64px; max-width:1240px; width:100%; margin:0 auto; }
 .topbar-actions{ display:flex; align-items:center; gap:10px; }
 
@@ -178,7 +183,10 @@ label .opt{ font-weight:400; color:var(--ink-muted); }
 .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-l); padding:20px 22px; }
 .card + .card{ margin-top:16px; }
 .section-title{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:14px; }
-.section-title-underline{ padding-bottom:8px; border-bottom:2px solid var(--sidebar-bg); margin-bottom:16px; }
+.section-title-underline{
+  background:var(--sidebar-bg); color:#fff; padding:11px 18px; border-radius:var(--radius-m); margin-bottom:16px;
+}
+.section-title-underline h2{ color:#fff; margin:0; }
 .section-title h2{ font-size:19px; }
 .section-title .desc{ font-size:14.5px; color:var(--ink-muted); }
 .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
@@ -229,7 +237,10 @@ label .opt{ font-weight:400; color:var(--ink-muted); }
 }
 .round-icon-btn:hover{ background:var(--accent-soft); }
 .despacho-jump{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; position:sticky; top:0; background:var(--bg); padding:6px 0; z-index:5; }
-.despacho-section-title{ margin:28px 0 14px; scroll-margin-top:54px; padding-bottom:8px; border-bottom:2px solid var(--sidebar-bg); }
+.despacho-section-title{
+  margin:28px 0 14px; scroll-margin-top:54px;
+  background:var(--sidebar-bg); color:#fff; padding:11px 18px; border-radius:var(--radius-m);
+}
 .despacho-section-title:first-of-type{ margin-top:0; }
 .tag-sat{ background:var(--sat-soft); color:var(--sat-ink); }
 .tag-orgao{ background:var(--orgao-soft); color:var(--orgao-ink); }
@@ -945,7 +956,12 @@ function renderTopbar(){
     actions = '<button class="btn btn-ghost" data-action="nav" data-view="home">⌂ Início</button>' + actions;
   }
   return '<div class="topbar"><div><div class="crumb">'+esc(crumb)+'</div><h1>'+esc(viewTitle(UI.view))+'</h1></div>'+
-    '<div class="topbar-actions">'+actions+'</div></div>';
+    '<div class="topbar-actions">'+actions+'</div>'+
+    '<svg class="topbar-wave" viewBox="0 0 1200 40" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">'+
+      '<path d="M0,22 C200,2 400,38 700,18 C900,4 1050,28 1200,10 L1200,40 L0,40 Z" fill="rgba(255,255,255,.14)"></path>'+
+      '<path d="M0,30 C220,10 420,40 720,24 C920,12 1080,34 1200,20" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2"></path>'+
+    '</svg>'+
+  '</div>';
 }
 
 function renderView(){
