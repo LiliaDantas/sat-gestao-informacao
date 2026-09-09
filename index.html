@@ -107,7 +107,7 @@ button{ font-family:inherit; }
 /* ---------- layout shell ---------- */
 #root{ display:flex; min-height:100vh; }
 .sidebar{
-  width:232px; flex:0 0 232px; background:var(--sidebar-bg); color:var(--sidebar-ink);
+  width:232px; flex:0 0 232px; background:var(--accent); color:var(--sidebar-ink);
   display:flex; flex-direction:column; padding:22px 16px; gap:24px; position:sticky; top:0; height:100vh;
 }
 .brand{ display:flex; flex-direction:column; gap:4px; padding:0 6px; }
@@ -241,7 +241,7 @@ label .opt{ font-weight:400; color:var(--ink-muted); }
 .tag-encaminhamento{ background:#BFE3F7; color:#04466E; }
 .tag-atraso{ background:var(--critical-soft); color:var(--critical-ink); }
 .flag-review{ color:var(--warn); font-size:14px; font-weight:700; }
-.checkbox-cell{ width:36px; text-align:center; }
+.checkbox-cell{ width:36px; text-align:center; border-right:1px solid var(--border); }
 input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--accent); cursor:pointer; vertical-align:middle; }
 
 /* ---------- table ---------- */
@@ -356,7 +356,7 @@ hr.sep{ border:none; border-top:1px solid var(--border); margin:16px 0; }
 }
 
 /* ---------- red table headers (Projetos / Briefings) ---------- */
-.tbl-red thead th{ background:var(--sidebar-bg); color:#fff; }
+.tbl-red thead th{ background:var(--surface-2); color:var(--sidebar-bg); font-weight:700; }
 
 /* ---------- inline row expansion (accordion) ---------- */
 .expand-row td{ background:var(--surface-2); padding:0; border-bottom:1px solid var(--border); }
@@ -377,7 +377,8 @@ hr.sep{ border:none; border-top:1px solid var(--border); margin:16px 0; }
 .enc-bullets{ margin:0; padding-left:20px; display:flex; flex-direction:column; gap:8px; }
 .enc-bullets li{ font-size:14.5px; line-height:1.45; }
 .enc-bullet-date{ font-weight:600; color:var(--ink); margin-right:4px; }
-.shortcut-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; }
+.shortcut-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
+@media (max-width: 720px){ .shortcut-grid{ grid-template-columns:repeat(2, 1fr); } }
 .shortcut-card{
   display:flex; flex-direction:column; align-items:flex-start; gap:8px; text-align:left;
   background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-l); padding:20px 18px;
@@ -1073,7 +1074,7 @@ function renderProjetos(){
       '<td>'+esc(p.orgao||'—')+'</td>'+
       '<td>'+esc(p.responsavel||'—')+'</td>'+
       '<td>'+statusSelect(p)+'</td>'+
-      '<td class="mono">'+(d===null?'—':(d===0?'hoje':d+'d atrás'))+'</td>'+
+      '<td>'+(d===null?'—':(d===0?'hoje':d+'d atrás'))+'</td>'+
     '</tr>';
     if(expanded){
       var ultima = atualizacoesOf(p.id)[0];
@@ -1092,7 +1093,7 @@ function renderProjetos(){
   return (
     renderFilterBar()+
     '<div class="hint" style="margin-bottom:10px">'+list.length+' projeto(s)</div>'+
-    (list.length ? '<div class="table-wrap"><table class="tbl-red"><thead><tr><th>Reunião</th><th>Nome</th><th>Órgão</th><th>Responsável</th><th>Status</th><th>Últ. atualização</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    (list.length ? '<div class="table-wrap"><table class="tbl-red"><thead><tr><th class="checkbox-cell" style="border-right:1px solid var(--border-strong)">Pauta Reunião</th><th>Nome</th><th>Órgão</th><th>Responsável</th><th>Status</th><th>Últ. atualização</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
       : '<div class="empty-state"><div class="big">—</div>Nenhum projeto encontrado com esses filtros.</div>')
   );
 }
@@ -1398,7 +1399,7 @@ function renderBriefings(){
       '<td class="strong">'+esc(b.tema)+'</td>'+
       '<td>'+fmtDate(b.dataSolicitacao)+'</td>'+
       '<td>'+fmtDate(b.prazoEntrega)+'</td>'+
-      '<td class="mono">'+(d===null?'—':(d===0?'hoje':d+'d atrás'))+'</td>'+
+      '<td>'+(d===null?'—':(d===0?'hoje':d+'d atrás'))+'</td>'+
     '</tr>';
     if(expanded){
       var ultima = atualizacoesOf(b.id)[0];
@@ -1421,7 +1422,7 @@ function renderBriefings(){
       '<div class="field"><label>&nbsp;</label><label class="flex gap6" style="font-weight:500;color:var(--ink-2)"><input type="checkbox" data-onchange="filtro-encerrados-briefing"'+(UI.filtros.encerradosBriefing?' checked':'')+'> mostrar encerrados</label></div>'+
     '</div>'+
     '<div class="hint" style="margin-bottom:10px">'+list.length+' briefing(s)/estudo(s)</div>'+
-    (list.length ? '<div class="table-wrap"><table class="tbl-red"><thead><tr><th>Reunião</th><th>Tema</th><th>Data da solicitação</th><th>Prazo de entrega</th><th>Últ. atualização</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    (list.length ? '<div class="table-wrap"><table class="tbl-red"><thead><tr><th class="checkbox-cell" style="border-right:1px solid var(--border-strong)">Pauta Reunião</th><th>Tema</th><th>Data da solicitação</th><th>Prazo de entrega</th><th>Últ. atualização</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
       : '<div class="empty-state"><div class="big">—</div>Nenhum briefing/estudo cadastrado ainda.</div>')
   );
 }
@@ -1651,7 +1652,7 @@ function renderRelatorioTopicos(tipo, id){
 }
 function renderOnePageReport(){
   var orgao = UI.onepageOrgao || '';
-  var selectHtml = '<div class="card"><div class="field" style="max-width:340px"><label>Selecione o órgão</label>'+
+  var selectHtml = '<div class="field-row filtro-row"><div class="field" style="max-width:340px"><label>Selecione o órgão</label>'+
     '<select class="select" data-onchange="onepage-orgao">'+selectOptions(DB.meta.orgaos, orgao, 'Selecione um órgão…')+'</select></div></div>';
   if(!orgao) return selectHtml+'<div class="empty-state" style="margin-top:16px">Selecione um órgão para ver o resumo dos últimos 60 dias.</div>';
 
