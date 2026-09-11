@@ -34,7 +34,7 @@
   --critical:#DA1E28;  --critical-soft:#FBE4E5;  --critical-ink:#781016;
   --info:#3B6FA0;      --info-soft:#DCE8F2;      --info-ink:#274B6B;
   --neutral:#66716A;   --neutral-soft:#E7E9E1;   --neutral-ink:#454E48;
-  --sidebar-bg:#027D9C; --sidebar-ink:#EAF5FA;
+  --sidebar-bg:#027D9C; --sidebar-ink:#EAF5FA; --sidebar-panel-bg:#01556A;
   --sat:#0093DD;    --sat-soft:#D6EEFA;    --sat-ink:#00618F;
   --orgao:#00923F;  --orgao-soft:#D9F2E3;  --orgao-ink:#006E2F;
   --shadow: 0 1px 2px rgba(20,30,25,.06), 0 1px 1px rgba(20,30,25,.04);
@@ -107,7 +107,7 @@ button{ font-family:inherit; }
 /* ---------- layout shell ---------- */
 #root{ display:flex; min-height:100vh; }
 .sidebar{
-  width:232px; flex:0 0 232px; background:var(--sidebar-bg); color:var(--sidebar-ink);
+  width:232px; flex:0 0 232px; background:var(--sidebar-panel-bg); color:var(--sidebar-ink);
   display:flex; flex-direction:column; padding:22px 16px; gap:24px; position:sticky; top:0; height:100vh;
 }
 .brand{ display:flex; flex-direction:column; gap:4px; padding:0 6px; align-items:center; text-align:center; }
@@ -555,7 +555,7 @@ var DB = null;
 var UI = { view:'home', selectedProjetoId:null, selectedBriefingId:null, projetoTab:'geral', modal:null,
            filtros:{ q:'', orgao:'', responsavel:'', status:'', encerrados:false, encerradosBriefing:false },
            calMonth: (new Date()).getFullYear()+'-'+((new Date()).getMonth()+1),
-           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{}, atualEditId:null, atrasadasAberto:false, onepageOrgao:'', onepageExpandido:{},
+           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{}, atualEditId:null, atrasadasAberto:false, onepageOrgao:'', onepageExpandido:{}, onepageRemovidos:{},
            projetoExpandidoId:null, briefingExpandidoId:null, briefingFiltroQ:'', atualTipoAlvo:'projeto' };
 
 /* ---------------------------------------------------------------- utils */
@@ -1545,7 +1545,6 @@ function renderAtualizacoesView(){
   }
   var feed = renderUltimosRegistros(tipo, selectedId);
   return '<div class="card">'+
-    '<h2 class="section-title-underline">Registrar atualização</h2>'+
     toggleHtml+formHtml+'</div>'+
     '<div class="card"><div class="section-title section-title-underline"><h2>Últimos registros</h2></div><div class="timeline" id="ultimos-registros-wrap">'+
     feed+'</div></div>';
@@ -1680,15 +1679,18 @@ function renderOnePageReport(){
     '<select class="select" data-onchange="onepage-orgao">'+selectOptions(DB.meta.orgaos, orgao, 'Selecione um órgão…')+'</select></div></div>';
   if(!orgao) return selectHtml+'<div class="empty-state" style="margin-top:16px">Selecione um órgão para ver o resumo dos últimos 60 dias.</div>';
 
-  var projs = relatorioOrgaoProjetos(orgao);
-  var briefs = relatorioOrgaoBriefings(orgao);
+  var projs = relatorioOrgaoProjetos(orgao).filter(function(p){ return !UI.onepageRemovidos[p.id]; });
+  var briefs = relatorioOrgaoBriefings(orgao).filter(function(b){ return !UI.onepageRemovidos[b.id]; });
 
   var projsHtml = projs.length ? projs.map(function(p){
     var aberto = !!UI.onepageExpandido[p.id];
     return '<div class="card" style="margin-bottom:12px;padding:14px 22px">'+
       '<div class="section-title" style="cursor:pointer;margin-bottom:0" data-action="onepage-toggle" data-id="'+p.id+'">'+
         '<h3 style="margin:0">'+esc(p.nome)+'</h3>'+
-        '<button class="round-icon-btn" style="pointer-events:none">'+(aberto?'–':'+')+'</button>'+
+        '<div class="flex gap8">'+
+          '<button class="round-icon-btn" style="pointer-events:none">'+(aberto?'–':'+')+'</button>'+
+          '<button class="icon-btn" title="Retirar da pauta" data-action="onepage-remove" data-id="'+p.id+'">✕</button>'+
+        '</div>'+
       '</div>'+
       (aberto ? '<div style="margin-top:14px">'+renderRelatorioTopicos('projeto', p.id)+'</div>' : '')+
     '</div>';
@@ -1699,7 +1701,10 @@ function renderOnePageReport(){
     return '<div class="card" style="margin-bottom:12px;padding:14px 22px">'+
       '<div class="section-title" style="cursor:pointer;margin-bottom:0" data-action="onepage-toggle" data-id="'+b.id+'">'+
         '<h3 style="margin:0">'+esc(b.tema)+'</h3>'+
-        '<button class="round-icon-btn" style="pointer-events:none">'+(aberto?'–':'+')+'</button>'+
+        '<div class="flex gap8">'+
+          '<button class="round-icon-btn" style="pointer-events:none">'+(aberto?'–':'+')+'</button>'+
+          '<button class="icon-btn" title="Retirar da pauta" data-action="onepage-remove" data-id="'+b.id+'">✕</button>'+
+        '</div>'+
       '</div>'+
       (aberto ? '<div style="margin-top:14px">'+renderRelatorioTopicos('briefing', b.id)+'</div>' : '')+
     '</div>';
@@ -1968,6 +1973,8 @@ function handleAction(action, el, e){
     UI.atrasadasAberto = !UI.atrasadasAberto; paint();
   } else if(action==='onepage-toggle'){
     UI.onepageExpandido[id] = !UI.onepageExpandido[id]; paint();
+  } else if(action==='onepage-remove'){
+    UI.onepageRemovidos[id] = true; paint();
   } else if(action==='kpi-drill'){
     openModal('kpi-list', {kind: el.dataset.kind});
   } else if(action==='projeto-tab'){
