@@ -178,7 +178,7 @@ label .opt{ font-weight:400; color:var(--ink-muted); }
 .mdlite-btn{ background:var(--surface); border:1px solid var(--border); border-radius:4px; width:28px; height:26px; font-size:13px; cursor:pointer; color:var(--ink); display:flex; align-items:center; justify-content:center; }
 .mdlite-btn:hover{ background:var(--accent-soft); border-color:var(--accent); }
 .mdlite-wrap .mdlite-textarea{ border-radius:0 0 var(--radius-s) var(--radius-s); margin-top:-1px; }
-.mdlite-ul{ margin:6px 0; padding-left:20px; }
+.mdlite-ul{ margin:6px 0; padding-left:20px; list-style-type:disc; }
 .btn-add-enc{
   background:var(--accent); color:#fff; border:none; border-radius:var(--radius-s);
   padding:9px 16px; font-size:14.5px; font-weight:600; cursor:pointer;
@@ -578,7 +578,7 @@ function mdliteTextareaHtml(attrsExtra, content){
     '<div class="mdlite-toolbar">'+
       '<button type="button" class="mdlite-btn" data-fmt="bold" title="Negrito"><strong>N</strong></button>'+
       '<button type="button" class="mdlite-btn" data-fmt="italic" title="Itálico"><em>I</em></button>'+
-      '<button type="button" class="mdlite-btn" data-fmt="sub" title="Subscrito">X<sub>2</sub></button>'+
+      '<button type="button" class="mdlite-btn" data-fmt="underline" title="Sublinhado"><u>S</u></button>'+
       '<button type="button" class="mdlite-btn" data-fmt="bullet" title="Marcador de tópico">≡</button>'+
     '</div>'+
     '<textarea class="textarea mdlite-textarea" '+attrsExtra+'>'+esc(content)+'</textarea>'+
@@ -591,12 +591,12 @@ function mdliteApplyFormat(textarea, fmt){
   var wrapped, newStart, newEnd;
   if(fmt==='bold'){ wrapped = '**'+(selected||'negrito')+'**'; }
   else if(fmt==='italic'){ wrapped = '*'+(selected||'itálico')+'*'; }
-  else if(fmt==='sub'){ wrapped = '~'+(selected||'subscrito')+'~'; }
+  else if(fmt==='underline'){ wrapped = '++'+(selected||'sublinhado')+'++'; }
   else if(fmt==='bullet'){
     if(selected){
-      wrapped = selected.split('\n').map(function(l){ return l.trim() ? '- '+l : l; }).join('\n');
+      wrapped = selected.split('\n').map(function(l){ return l.trim() ? '• '+l : l; }).join('\n');
     } else {
-      wrapped = '- ';
+      wrapped = '• ';
     }
   } else { return; }
   textarea.value = val.slice(0,start) + wrapped + val.slice(end);
@@ -623,7 +623,7 @@ function mdLite(s){
   var html = out.join('');
   html = html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
   html = html.replace(/\*(.+?)\*/g,'<em>$1</em>');
-  html = html.replace(/~(.+?)~/g,'<sub>$1</sub>');
+  html = html.replace(/\+\+(.+?)\+\+/g,'<u>$1</u>');
   return html;
 }
 function origemTagHtml(origem){
