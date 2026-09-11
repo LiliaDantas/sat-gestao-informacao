@@ -173,6 +173,12 @@ label .opt{ font-weight:400; color:var(--ink-muted); }
 }
 .input:focus,.select:focus,.textarea:focus{ border-color:var(--accent); }
 .textarea{ resize:vertical; min-height:76px; font-family:inherit; }
+.mdlite-wrap{ display:flex; flex-direction:column; }
+.mdlite-toolbar{ display:flex; gap:4px; background:var(--surface-2); border:1px solid var(--border); border-bottom:none; border-radius:var(--radius-s) var(--radius-s) 0 0; padding:5px 6px; }
+.mdlite-btn{ background:var(--surface); border:1px solid var(--border); border-radius:4px; width:28px; height:26px; font-size:13px; cursor:pointer; color:var(--ink); display:flex; align-items:center; justify-content:center; }
+.mdlite-btn:hover{ background:var(--accent-soft); border-color:var(--accent); }
+.mdlite-wrap .mdlite-textarea{ border-radius:0 0 var(--radius-s) var(--radius-s); margin-top:-1px; }
+.mdlite-ul{ margin:6px 0; padding-left:20px; }
 .hint{ font-size:14px; color:var(--ink-muted); }
 .search-box{ position:relative; }
 .search-box input{ padding-left:30px; }
@@ -555,13 +561,66 @@ var DB = null;
 var UI = { view:'home', selectedProjetoId:null, selectedBriefingId:null, projetoTab:'geral', modal:null,
            filtros:{ q:'', orgao:'', responsavel:'', status:'', encerrados:false, encerradosBriefing:false },
            calMonth: (new Date()).getFullYear()+'-'+((new Date()).getMonth()+1),
-           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{}, atualEditId:null, atrasadasAberto:false, onepageOrgao:'', onepageExpandido:{}, onepageRemovidos:{},
+           despachoOverrides:{}, despachoEditing:{}, despachoEncAberto:{}, despachoEditTexto:{}, atualEditId:null, atrasadasAberto:false, onepageOrgao:'', onepageExpandido:{}, onepageRemovidos:{}, despachoConteudoAberto:{},
            projetoExpandidoId:null, briefingExpandidoId:null, briefingFiltroQ:'', atualTipoAlvo:'projeto' };
 
 /* ---------------------------------------------------------------- utils */
 function esc(s){ return (s===undefined||s===null?'':String(s)).replace(/[&<>"']/g, function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-function mdLite(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>'); }
+function mdliteTextareaHtml(attrsExtra, content){
+  attrsExtra = attrsExtra || ''; content = content || '';
+  return '<div class="mdlite-wrap">'+
+    '<div class="mdlite-toolbar">'+
+      '<button type="button" class="mdlite-btn" data-fmt="bold" title="Negrito"><strong>N</strong></button>'+
+      '<button type="button" class="mdlite-btn" data-fmt="italic" title="Itálico"><em>I</em></button>'+
+      '<button type="button" class="mdlite-btn" data-fmt="sub" title="Subscrito">X<sub>2</sub></button>'+
+      '<button type="button" class="mdlite-btn" data-fmt="bullet" title="Marcador de tópico">≡</button>'+
+    '</div>'+
+    '<textarea class="textarea mdlite-textarea" '+attrsExtra+'>'+esc(content)+'</textarea>'+
+  '</div>';
+}
+function mdliteApplyFormat(textarea, fmt){
+  var start = textarea.selectionStart, end = textarea.selectionEnd;
+  var val = textarea.value;
+  var selected = val.slice(start, end);
+  var wrapped, newStart, newEnd;
+  if(fmt==='bold'){ wrapped = '**'+(selected||'negrito')+'**'; }
+  else if(fmt==='italic'){ wrapped = '*'+(selected||'itálico')+'*'; }
+  else if(fmt==='sub'){ wrapped = '~'+(selected||'subscrito')+'~'; }
+  else if(fmt==='bullet'){
+    if(selected){
+      wrapped = selected.split('\n').map(function(l){ return l.trim() ? '- '+l : l; }).join('\n');
+    } else {
+      wrapped = '- ';
+    }
+  } else { return; }
+  textarea.value = val.slice(0,start) + wrapped + val.slice(end);
+  textarea.focus();
+  newStart = newEnd = start + wrapped.length;
+  textarea.setSelectionRange(newStart, newEnd);
+}
+function mdLite(s){
+  var raw = esc(s);
+  var lines = raw.split('\n');
+  var out = []; var inList = false;
+  for(var i=0;i<lines.length;i++){
+    var line = lines[i];
+    var m = /^(?:-|•)\s+(.*)$/.exec(line);
+    if(m){
+      if(!inList){ out.push('<ul class="mdlite-ul">'); inList = true; }
+      out.push('<li>'+m[1]+'</li>');
+    } else {
+      if(inList){ out.push('</ul>'); inList = false; }
+      out.push(line + (i<lines.length-1 ? '<br>' : ''));
+    }
+  }
+  if(inList) out.push('</ul>');
+  var html = out.join('');
+  html = html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  html = html.replace(/~(.+?)~/g,'<sub>$1</sub>');
+  return html;
+}
 function origemTagHtml(origem){
   var isEncaminhamento = (origem==='encaminhamento' || origem==='encaminhamento-sat' || origem==='encaminhamento-orgao');
   if(isEncaminhamento) return '<span class="tag tag-encaminhamento">Encaminhamento</span>';
@@ -1184,10 +1243,11 @@ function renderDespachoBriefings(){
 function renderDespachoBriefingCard(b){
   var ultima = ultimaAtualizacaoDoBriefing(b.id);
   var encAberto = !!UI.despachoEncAberto[b.id];
+  var conteudoAberto = !!UI.despachoConteudoAberto[b.id];
   var editando = !!UI.despachoEditTexto[b.id] && ultima;
   var ultimaHtml;
   if(editando){
-    ultimaHtml = '<div class="field"><textarea class="textarea" data-despacho-edit="'+b.id+'">'+esc(ultima.texto)+'</textarea></div>'+
+    ultimaHtml = '<div class="field">'+mdliteTextareaHtml('data-despacho-edit="'+b.id+'"', ultima.texto)+'</div>'+
       '<div class="flex gap8" style="margin-top:6px">'+
         '<button class="btn btn-sm btn-primary" data-action="despacho-atual-save" data-id="'+b.id+'" data-atual="'+ultima.id+'">Salvar</button>'+
         '<button class="btn btn-sm btn-ghost" data-action="despacho-atual-cancel" data-id="'+b.id+'">Cancelar</button>'+
@@ -1202,30 +1262,36 @@ function renderDespachoBriefingCard(b){
   }
   var encFormHtml = encAberto ?
     '<form data-form="despacho-encaminhamento-briefing" data-briefing="'+b.id+'" style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">'+
-      '<div class="field"><label>Encaminhamento</label><textarea class="textarea" name="texto" placeholder="Registre aqui uma nota sobre este briefing/estudo para o despacho…" required data-autofocus></textarea></div>'+
+      '<div class="field"><label>Encaminhamento</label>'+mdliteTextareaHtml('name="texto" placeholder="Registre aqui uma nota sobre este briefing/estudo para o despacho…" required data-autofocus')+'</div>'+
       '<button class="btn btn-primary btn-sm" type="submit" style="margin-top:8px">Registrar</button>'+
     '</form>'
     : '';
   return '<div class="card" style="margin-bottom:16px;padding-top:0">'+
-    '<div class="flex gap12 despacho-card-head" style="justify-content:space-between;flex-wrap:wrap">'+
+    '<div class="flex gap12 despacho-card-head" style="justify-content:space-between;flex-wrap:wrap;cursor:pointer" data-action="despacho-conteudo-toggle" data-id="'+b.id+'">'+
       '<h3 style="margin:0"><button class="link-btn" style="font:inherit;color:inherit" data-action="open-briefing" data-id="'+b.id+'">'+esc(b.tema)+'</button></h3>'+
-      '<button class="icon-btn" title="Remover da Reunião Gerencial" data-action="despacho-remove-briefing" data-id="'+b.id+'">✕</button>'+
+      '<div class="flex gap8">'+
+        '<button class="round-icon-btn" style="pointer-events:none">'+(conteudoAberto?'–':'+')+'</button>'+
+        '<button class="icon-btn" title="Remover da Reunião Gerencial" data-action="despacho-remove-briefing" data-id="'+b.id+'">✕</button>'+
+      '</div>'+
     '</div>'+
-    ultimaHtml+
-    renderEncaminhamentosBullets('briefing', b.id)+
-    '<div style="margin-top:10px;text-align:center">'+
-      '<button class="round-icon-btn" title="'+(encAberto?'Fechar encaminhamento':'Adicionar encaminhamento')+'" data-action="despacho-enc-toggle" data-id="'+b.id+'">'+(encAberto?'–':'+')+'</button>'+
-    '</div>'+
-    encFormHtml+
+    (conteudoAberto ? (
+      ultimaHtml+
+      renderEncaminhamentosBullets('briefing', b.id)+
+      '<div style="margin-top:10px;text-align:center">'+
+        '<button class="round-icon-btn" title="'+(encAberto?'Fechar encaminhamento':'Adicionar encaminhamento')+'" data-action="despacho-enc-toggle" data-id="'+b.id+'">'+(encAberto?'–':'+')+'</button>'+
+      '</div>'+
+      encFormHtml
+    ) : '')+
   '</div>';
 }
 function renderDespachoCard(p){
   var ultima = ultimaAtualizacaoDoProjeto(p.id);
   var encAberto = !!UI.despachoEncAberto[p.id];
+  var conteudoAberto = !!UI.despachoConteudoAberto[p.id];
   var editando = !!UI.despachoEditTexto[p.id] && ultima;
   var ultimaHtml;
   if(editando){
-    ultimaHtml = '<div class="field"><textarea class="textarea" data-despacho-edit="'+p.id+'">'+esc(ultima.texto)+'</textarea></div>'+
+    ultimaHtml = '<div class="field">'+mdliteTextareaHtml('data-despacho-edit="'+p.id+'"', ultima.texto)+'</div>'+
       '<div class="flex gap8" style="margin-top:6px">'+
         '<button class="btn btn-sm btn-primary" data-action="despacho-atual-save" data-id="'+p.id+'" data-atual="'+ultima.id+'">Salvar</button>'+
         '<button class="btn btn-sm btn-ghost" data-action="despacho-atual-cancel" data-id="'+p.id+'">Cancelar</button>'+
@@ -1240,21 +1306,26 @@ function renderDespachoCard(p){
   }
   var encFormHtml = encAberto ?
     '<form data-form="despacho-encaminhamento" data-projeto="'+p.id+'" style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">'+
-      '<div class="field"><label>Encaminhamento</label><textarea class="textarea" name="texto" placeholder="Registre aqui uma nota sobre este projeto para o despacho…" required data-autofocus></textarea></div>'+
+      '<div class="field"><label>Encaminhamento</label>'+mdliteTextareaHtml('name="texto" placeholder="Registre aqui uma nota sobre este projeto para o despacho…" required data-autofocus')+'</div>'+
       '<button class="btn btn-primary btn-sm" type="submit" style="margin-top:8px">Registrar</button>'+
     '</form>'
     : '';
   return '<div class="card" style="margin-bottom:16px;padding-top:0">'+
-    '<div class="flex gap12 despacho-card-head" style="justify-content:space-between;flex-wrap:wrap">'+
+    '<div class="flex gap12 despacho-card-head" style="justify-content:space-between;flex-wrap:wrap;cursor:pointer" data-action="despacho-conteudo-toggle" data-id="'+p.id+'">'+
       '<h3 style="margin:0"><button class="link-btn" style="font:inherit;color:inherit" data-action="open-projeto" data-id="'+p.id+'">'+esc(p.nome)+'</button></h3>'+
-      '<button class="icon-btn" title="Remover da Reunião Gerencial" data-action="despacho-remove" data-id="'+p.id+'">✕</button>'+
+      '<div class="flex gap8">'+
+        '<button class="round-icon-btn" style="pointer-events:none">'+(conteudoAberto?'–':'+')+'</button>'+
+        '<button class="icon-btn" title="Remover da Reunião Gerencial" data-action="despacho-remove" data-id="'+p.id+'">✕</button>'+
+      '</div>'+
     '</div>'+
-    ultimaHtml+
-    renderEncaminhamentosBullets('projeto', p.id)+
-    '<div style="margin-top:10px;text-align:center">'+
-      '<button class="round-icon-btn" title="'+(encAberto?'Fechar encaminhamento':'Adicionar encaminhamento')+'" data-action="despacho-enc-toggle" data-id="'+p.id+'">'+(encAberto?'–':'+')+'</button>'+
-    '</div>'+
-    encFormHtml+
+    (conteudoAberto ? (
+      ultimaHtml+
+      renderEncaminhamentosBullets('projeto', p.id)+
+      '<div style="margin-top:10px;text-align:center">'+
+        '<button class="round-icon-btn" title="'+(encAberto?'Fechar encaminhamento':'Adicionar encaminhamento')+'" data-action="despacho-enc-toggle" data-id="'+p.id+'">'+(encAberto?'–':'+')+'</button>'+
+      '</div>'+
+      encFormHtml
+    ) : '')+
   '</div>';
 }
 
@@ -1314,7 +1385,7 @@ function renderAtualizacoesTimeline(tipo, id, opts){
     var tagHtml = origemTagHtml(a.origem);
     var corpo;
     if(editando){
-      corpo = '<div class="field"><textarea class="textarea" data-atual-edit="'+a.id+'">'+esc(a.texto)+'</textarea></div>'+
+      corpo = '<div class="field">'+mdliteTextareaHtml('data-atual-edit="'+a.id+'"', a.texto)+'</div>'+
         '<div class="flex gap8" style="margin-top:6px">'+
           '<button class="btn btn-sm btn-primary" data-action="atual-edit-save" data-id="'+a.id+'">Salvar</button>'+
           '<button class="btn btn-sm btn-ghost" data-action="atual-edit-cancel" data-id="'+a.id+'">Cancelar</button>'+
@@ -1509,7 +1580,7 @@ function renderAtualizacoesView(){
           (selectedId?'':'<option value="">Selecione…</option>')+optsB+'</select></div>'+
         '<div class="field" style="max-width:220px"><label>Autor</label>'+autorSelect()+'</div>'+
       '</div>'+
-      '<div class="field"><label>Texto da atualização</label><textarea class="textarea" name="texto" required placeholder="O que aconteceu?"></textarea></div>'+
+      '<div class="field"><label>Texto da atualização</label>'+mdliteTextareaHtml('name="texto" required placeholder="O que aconteceu?"')+'</div>'+
       '<div class="field-row">'+
         '<div class="field" style="flex:2"><label>Link de anexo</label><input class="input" type="url" name="anexoLink" placeholder="https://..."></div>'+
       '</div>'+
@@ -1528,7 +1599,7 @@ function renderAtualizacoesView(){
           (selectedId?'':'<option value="">Selecione…</option>')+opts+'</select></div>'+
         '<div class="field" style="max-width:220px"><label>Autor</label>'+autorSelect()+'</div>'+
       '</div>'+
-      '<div class="field"><label>Texto da atualização</label><textarea class="textarea" name="texto" required placeholder="O que aconteceu?"></textarea></div>'+
+      '<div class="field"><label>Texto da atualização</label>'+mdliteTextareaHtml('name="texto" required placeholder="O que aconteceu?"')+'</div>'+
       '<div class="field-row">'+
         '<div class="field" style="flex:2"><label>Link de anexo</label><input class="input" type="url" name="anexoLink" placeholder="https://..."></div>'+
       '</div>'+
@@ -1675,8 +1746,12 @@ function renderRelatorioTopicos(tipo, id){
 }
 function renderOnePageReport(){
   var orgao = UI.onepageOrgao || '';
-  var selectHtml = '<div class="field-row filtro-row"><div class="field" style="max-width:340px"><label>Selecione o órgão</label>'+
-    '<select class="select" data-onchange="onepage-orgao">'+selectOptions(DB.meta.orgaos, orgao, 'Selecione um órgão…')+'</select></div></div>';
+  var temRemovidos = Object.keys(UI.onepageRemovidos).length > 0;
+  var selectHtml = '<div class="field-row filtro-row" style="align-items:flex-end">'+
+    '<div class="field" style="max-width:340px"><label>Selecione o órgão</label>'+
+    '<select class="select" data-onchange="onepage-orgao">'+selectOptions(DB.meta.orgaos, orgao, 'Selecione um órgão…')+'</select></div>'+
+    (temRemovidos ? '<div class="field"><button type="button" class="btn btn-sm btn-ghost" data-action="onepage-restaurar">Lista completa</button></div>' : '')+
+    '</div>';
   if(!orgao) return selectHtml+'<div class="empty-state" style="margin-top:16px">Selecione um órgão para ver o resumo dos últimos 60 dias.</div>';
 
   var projs = relatorioOrgaoProjetos(orgao).filter(function(p){ return !UI.onepageRemovidos[p.id]; });
@@ -1895,6 +1970,14 @@ function wireEvents(){
     var backdrop = e.target.closest('[data-action="backdrop-close"]');
     if(backdrop && e.target===backdrop){ closeModal(); return; }
     if(e.target.closest('[data-onchange="despacho-toggle"]') || e.target.closest('[data-onchange="despacho-toggle-briefing"]')) return; /* checkbox inside a clickable row */
+    var fmtBtn = e.target.closest('.mdlite-btn');
+    if(fmtBtn){
+      e.preventDefault();
+      var wrap = fmtBtn.closest('.mdlite-wrap');
+      var ta = wrap && wrap.querySelector('textarea');
+      if(ta) mdliteApplyFormat(ta, fmtBtn.dataset.fmt);
+      return;
+    }
     var el = e.target.closest('[data-action]');
     if(!el) return;
     handleAction(el.dataset.action, el, e);
@@ -1975,6 +2058,8 @@ function handleAction(action, el, e){
     UI.onepageExpandido[id] = !UI.onepageExpandido[id]; paint();
   } else if(action==='onepage-remove'){
     UI.onepageRemovidos[id] = true; paint();
+  } else if(action==='onepage-restaurar'){
+    UI.onepageRemovidos = {}; paint();
   } else if(action==='kpi-drill'){
     openModal('kpi-list', {kind: el.dataset.kind});
   } else if(action==='projeto-tab'){
@@ -2029,6 +2114,8 @@ function handleAction(action, el, e){
     UI.calMonth = y+'-'+(m+1); paint();
   } else if(action==='new-marco-global'){
     openModal('marco-form', {mode:'create'});
+  } else if(action==='despacho-conteudo-toggle'){
+    UI.despachoConteudoAberto[id] = !UI.despachoConteudoAberto[id]; paint();
   } else if(action==='despacho-enc-toggle'){
     UI.despachoEncAberto[id] = !UI.despachoEncAberto[id]; paint();
   } else if(action==='despacho-atual-edit'){
